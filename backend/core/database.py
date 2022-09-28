@@ -1,9 +1,8 @@
-from asyncio import current_task
 from typing import AsyncGenerator
 
 import sqlalchemy as sa
-from fastapi.encoders import jsonable_encoder
-from sqlalchemy.ext.asyncio import AsyncSession, async_scoped_session, create_async_engine
+from sqlalchemy.exc import DBAPIError
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -12,23 +11,17 @@ from backend.core import settings
 
 Base = declarative_base()
 
-engine = create_async_engine(
-    settings.DATABASE_URI,
-    echo=settings.POSTGRES_DB_ECHO,
-    future=True,
-    json_serializer=jsonable_encoder,
-)
+engine = create_async_engine(settings.DATABASE_URI, echo=settings.POSTGRES_DB_ECHO)
 
-async_session_factory = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
-AsyncScopedSession = async_scoped_session(async_session_factory, scopefunc=current_task)
+async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 
-async def get_db() -> AsyncGenerator:
-    async with async_session_factory() as session:
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session() as session:
         try:
             yield session
             await session.commit()
-        except Exception:
+        except DBAPIError:
             await session.rollback()
             raise
         finally:

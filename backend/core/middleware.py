@@ -5,7 +5,7 @@ from starlette.requests import Request
 
 from backend.core import settings
 from backend.core.common import SESSION
-from backend.core.database import get_db
+from backend.core.database import get_session
 
 
 async def add_process_time_header(request: Request, call_next) -> Response:
@@ -19,7 +19,7 @@ async def add_process_time_header(request: Request, call_next) -> Response:
 
 
 async def set_session(request: Request, call_next) -> Response:
-    db_session = await anext(get_db())
+    db_session = await anext(get_session())
     SESSION.set(db_session)
     response = await call_next(request)
     SESSION.set(None)
