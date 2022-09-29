@@ -19,5 +19,31 @@ services:
     ports:
       - "5432:5432"
 
+  api:
+    image: painassasin/secure_t:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_HOST: db
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      bash -c "alembic upgrade head
+      && uvicorn backend.app:app --reload --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: curl -sS http://127.0.0.1:8000/ping/ || exit 1
+      interval: 3s
+      timeout: 3s
+      retries: 3
+    volumes:
+      - ./backend/:/opt/backend
+
 volumes:
   db_data:
