@@ -1,5 +1,5 @@
 from backend.blog.repositories import InvalidPostId, PostRepository
-from backend.blog.schemas import Comment, Post, PostWithUser
+from backend.blog.schemas import Comment, Post, PostWithComments, PostWithUser
 
 
 class BlogService:
@@ -34,3 +34,9 @@ class BlogService:
             offset=offset,
         )
         return total, items
+
+    async def get_post(self, post_id: int) -> PostWithComments | None:
+        if post := await self._post_repository.get_post(post_id):
+            post_with_comments: PostWithComments = PostWithComments.parse_obj(post)
+            post_with_comments.comments = await self._post_repository.get_post_comments(post_id)
+            return post_with_comments

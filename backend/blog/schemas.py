@@ -65,3 +65,34 @@ class PostWithUser(BaseModel):
                 username=username
             )
         )
+
+
+class PostComment(BaseModel):
+    id: int
+    created_at: datetime
+    owner: User
+    text: str
+    comments: list = []
+
+    @classmethod
+    def transform_tree(cls, comments: list, parent_id: int | None = None) -> list[dict]:
+        result = []
+
+        for comment in comments:
+
+            # 'RowMapping' object does not support item assignment
+            comment = dict(comment)
+
+            if 'owner' not in comment:
+                user_id = comment['user_id']
+                username = comment['username']
+                comment['owner'] = {'id': user_id, 'username': username}
+            if comment['parent_id'] == parent_id:
+                comment['comments'] = cls.transform_tree(comments, comment['id'])
+                result.append(comment)
+
+        return result
+
+
+class PostWithComments(PostWithUser):
+    comments: list[PostComment] = []

@@ -3,7 +3,7 @@ from starlette import status
 
 from backend.auth.schemas import User
 from backend.auth.utils import auth_required
-from backend.blog.schemas import Comment, CreateComment, CreatePost, Post, PostWithUser
+from backend.blog.schemas import Comment, CreateComment, CreatePost, Post, PostWithComments, PostWithUser
 from backend.blog.services import BlogService
 from backend.core.pagination import Page, paginate
 
@@ -28,6 +28,16 @@ async def get_all_posts(
 ):
     total, items = await blog_service.get_all_posts(limit, offset)
     return paginate(items, limit, offset, total)
+
+
+@router.get('/{post_id}/', response_model=PostWithComments)
+async def get_post_description(
+    post_id: int,
+    blog_service: BlogService = Depends(),
+):
+    if not (post := await blog_service.get_post(post_id=post_id)):
+        raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
+    return post
 
 
 @router.post('/{post_id}/comments/', response_model=Comment, status_code=status.HTTP_201_CREATED)
