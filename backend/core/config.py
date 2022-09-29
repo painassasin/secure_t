@@ -5,7 +5,6 @@ from pydantic import BaseSettings, PostgresDsn, validator
 
 class AppSettings(BaseSettings):
     DEBUG: bool = False
-    PROCESS_TIME: bool = False
 
     POSTGRES_HOST: str
     POSTGRES_USER: str
