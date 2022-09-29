@@ -73,21 +73,16 @@ async def update_post(
         raise HTTPException(detail='Only owner have to update post', status_code=status.HTTP_403_FORBIDDEN)
 
 
-@router.patch('/{post_id}/comments/{comment_id}/', response_model=Post, deprecated=True)
-async def update_comment(
+@router.delete('/{post_id}/', status_code=status.HTTP_204_NO_CONTENT)
+async def delete_post(
     post_id: int,
-    comment_id: int,
-    data: UpdatePost,
     user: User = Depends(auth_required),
-    blog_service: BlogService = Depends(),
     post_repository: PostRepository = Depends(),
 ):
-    if not await post_repository.get_post_in_db(post_id=post_id):
+    if not (post := await post_repository.get_post_in_db(post_id=post_id)):
         raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
 
-    try:
-        return await blog_service.update_post(post_id=comment_id, user_id=user.id, data=data)
-    except PostNotFound:
-        raise HTTPException(detail='Comment not found', status_code=status.HTTP_404_NOT_FOUND)
-    except NotOwner:
-        raise HTTPException(detail='Only owner have to update post', status_code=status.HTTP_403_FORBIDDEN)
+    if post.owner_id != user.id:
+        raise HTTPException(detail='Only owner have to delete post', status_code=status.HTTP_403_FORBIDDEN)
+
+    await post_repository.delete_post(post_id)

@@ -1,5 +1,5 @@
 from pydantic import parse_obj_as
-from sqlalchemy import case, desc, func, select, update
+from sqlalchemy import case, delete, desc, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
@@ -132,3 +132,7 @@ class PostRepository(BaseRepository):
             select(Post).filter(Post.id == post_id)
         )).scalar_one_or_none():
             return PostInDB.from_orm(post)
+
+    async def delete_post(self, post_id) -> None:
+        await self._db_session.execute(delete(Post).filter(Post.id == post_id))
+        await self._db_session.commit()

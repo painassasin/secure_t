@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 293488c49995
+Revision ID: 3c72cfb6a800
 Revises:
-Create Date: 2022-09-29 00:40:30.390362
+Create Date: 2022-09-30 00:24:53.641874
 
 """
 import sqlalchemy as sa
@@ -10,7 +10,7 @@ from alembic import op
 
 
 # revision identifiers, used by Alembic.
-revision = '293488c49995'
+revision = '3c72cfb6a800'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -34,10 +34,10 @@ def upgrade() -> None:
     sa.Column('owner_id', sa.Integer(), nullable=False),
     sa.Column('text', sa.Text(), nullable=False),
     sa.Column('parent_id', sa.Integer(), nullable=True),
-    sa.Column('post_id', sa.Integer(), nullable=False),
-    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ),
-    sa.ForeignKeyConstraint(['parent_id'], ['posts.id'], ),
-    sa.ForeignKeyConstraint(['post_id'], ['posts.id'], ),
+    sa.Column('post_id', sa.Integer(), nullable=True),
+    sa.ForeignKeyConstraint(['owner_id'], ['users.id'], ondelete='RESTRICT'),
+    sa.ForeignKeyConstraint(['parent_id'], ['posts.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['post_id'], ['posts.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
