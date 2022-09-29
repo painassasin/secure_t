@@ -1,5 +1,13 @@
 from backend.blog.repositories import InvalidPostId, PostRepository
-from backend.blog.schemas import Comment, Post, PostWithComments, PostWithUser
+from backend.blog.schemas import Comment, Post, PostWithComments, PostWithUser, UpdatePost
+
+
+class PostNotFound(Exception):
+    ...
+
+
+class NotOwner(Exception):
+    ...
 
 
 class BlogService:
@@ -40,3 +48,12 @@ class BlogService:
             post_with_comments: PostWithComments = PostWithComments.parse_obj(post)
             post_with_comments.comments = await self._post_repository.get_post_comments(post_id)
             return post_with_comments
+
+    async def update_post(self, post_id: int, user_id: int, data: UpdatePost):
+        if not (post := await self._post_repository.get_post_in_db(post_id=post_id)):
+            raise PostNotFound
+
+        if post.owner_id != user_id:
+            raise NotOwner
+
+        return await self._post_repository.update_post(post_id=post_id, owner_id=user_id, **data.dict())

@@ -3,8 +3,9 @@ from starlette import status
 
 from backend.auth.schemas import User
 from backend.auth.utils import auth_required
-from backend.blog.schemas import Comment, CreateComment, CreatePost, Post, PostWithComments, PostWithUser
-from backend.blog.services import BlogService
+from backend.blog.repositories import PostRepository
+from backend.blog.schemas import Comment, CreateComment, CreatePost, Post, PostWithComments, PostWithUser, UpdatePost
+from backend.blog.services import BlogService, NotOwner, PostNotFound
 from backend.core.pagination import Page, paginate
 
 
@@ -55,3 +56,38 @@ async def create_comment(
     )):
         raise HTTPException(detail='Invalid post or parentId', status_code=status.HTTP_400_BAD_REQUEST)
     return comment
+
+
+@router.patch('/{post_id}/', response_model=Post)
+async def update_post(
+    post_id: int,
+    data: UpdatePost,
+    user: User = Depends(auth_required),
+    blog_service: BlogService = Depends(),
+):
+    try:
+        return await blog_service.update_post(post_id=post_id, user_id=user.id, data=data)
+    except PostNotFound:
+        raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
+    except NotOwner:
+        raise HTTPException(detail='Only owner have to update post', status_code=status.HTTP_403_FORBIDDEN)
+
+
+@router.patch('/{post_id}/comments/{comment_id}/', response_model=Post, deprecated=True)
+async def update_comment(
+    post_id: int,
+    comment_id: int,
+    data: UpdatePost,
+    user: User = Depends(auth_required),
+    blog_service: BlogService = Depends(),
+    post_repository: PostRepository = Depends(),
+):
+    if not await post_repository.get_post_in_db(post_id=post_id):
+        raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
+
+    try:
+        return await blog_service.update_post(post_id=comment_id, user_id=user.id, data=data)
+    except PostNotFound:
+        raise HTTPException(detail='Comment not found', status_code=status.HTTP_404_NOT_FOUND)
+    except NotOwner:
+        raise HTTPException(detail='Only owner have to update post', status_code=status.HTTP_403_FORBIDDEN)

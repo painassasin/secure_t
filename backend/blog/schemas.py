@@ -96,3 +96,7 @@ class PostComment(BaseModel):
 
 class PostWithComments(PostWithUser):
     comments: list[PostComment] = []
+
+
+class UpdatePost(BaseModel):
+    text: str

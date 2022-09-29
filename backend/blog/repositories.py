@@ -1,5 +1,5 @@
 from pydantic import parse_obj_as
-from sqlalchemy import case, desc, func, select
+from sqlalchemy import case, desc, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
@@ -115,3 +115,20 @@ class PostRepository(BaseRepository):
 
         results = (await self._db_session.execute(stmt)).mappings().all()
         return parse_obj_as(list[PostComment], PostComment.transform_tree(results))
+
+    async def update_post(self, post_id: int, owner_id: int, **values) -> PostInDB:
+        values['updated_at'] = func.now()
+        cursor = await self._db_session.execute(
+            update(Post).values(**values).filter(
+                Post.id == post_id,
+                Post.owner_id == owner_id,
+            ).returning(Post)
+        )
+        await self._db_session.commit()
+        return PostInDB.parse_obj(cursor.mappings().one())
+
+    async def get_post_in_db(self, post_id) -> PostInDB | None:
+        if post := (await self._db_session.execute(
+            select(Post).filter(Post.id == post_id)
+        )).scalar_one_or_none():
+            return PostInDB.from_orm(post)

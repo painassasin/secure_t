@@ -42,7 +42,7 @@ async def signin(
     return {'access_token': assess_token, 'token_type': 'bearer'}
 
 
-@router.post('/signin/form/', response_model=Token, description='Signin via multipart form data')
+@router.post('/signin/form/', response_model=Token, include_in_schema=False)
 async def signin_form(
     data: OAuth2PasswordRequestForm = Depends(),
     user_repository: UserRepository = Depends(),
