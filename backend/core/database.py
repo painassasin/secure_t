@@ -11,14 +11,12 @@ from backend.core import settings
 
 Base = declarative_base()
 
-engine = create_async_engine(settings.DATABASE_URI, echo=settings.POSTGRES_DB_ECHO)
-
-async_session = sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+async_engine = create_async_engine(settings.DATABASE_URI, echo=settings.POSTGRES_DB_ECHO, future=True)
+async_session = sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session() as session:
-        session: AsyncSession
         try:
             yield session
             await session.commit()

@@ -22,8 +22,8 @@ async def signup(
             detail='User already exists',
         )
 
-    assess_token = get_access_token(token_data=TokenData.parse_obj(user))
-    return {'access_token': assess_token, 'token_type': 'bearer'}
+    access_token = get_access_token(token_data=TokenData.parse_obj(user))
+    return {'access_token': access_token, 'token_type': 'bearer'}
 
 
 @router.post('/signin/', response_model=Token)
@@ -38,8 +38,8 @@ async def signin(
             detail='Invalid username or password',
         )
 
-    assess_token = get_access_token(token_data=TokenData.parse_obj(user))
-    return {'access_token': assess_token, 'token_type': 'bearer'}
+    access_token = get_access_token(token_data=TokenData.parse_obj(user))
+    return {'access_token': access_token, 'token_type': 'bearer'}
 
 
 @router.post('/signin/form/', response_model=Token, include_in_schema=False)
@@ -54,5 +54,5 @@ async def signin_form(
             detail='Invalid username or password',
         )
 
-    assess_token = get_access_token(token_data=TokenData.parse_obj(user))
-    return {'access_token': assess_token, 'token_type': 'bearer'}
+    access_token = get_access_token(token_data=TokenData.parse_obj(user))
+    return {'access_token': access_token, 'token_type': 'bearer'}
