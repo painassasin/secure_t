@@ -1,5 +1,4 @@
 import asyncio
-from typing import Coroutine, Generator
 
 import pytest
 import pytest_asyncio
@@ -49,18 +48,28 @@ async def async_session():
             await db_session.close()
 
 
+# @pytest_asyncio.fixture(autouse=True)
+# async def delete_data():
+#     async with async_engine.begin() as conn:
+#         try:
+#             tasks: Generator[Coroutine] = (
+#                 conn.execute(sa.text(f'DELETE FROM {table_name}'))
+#                 for table_name in Base.metadata.tables
+#             )
+#             await asyncio.gather(*tasks)
+#         except Exception as e:
+#             await conn.rollback()
+
+
 @pytest_asyncio.fixture(autouse=True)
-async def delete_data():
-    async with async_engine.begin() as conn:
-        tasks: Generator[Coroutine] = (
-            conn.execute(sa.text(f'DELETE FROM {table_name}'))
-            for table_name in Base.metadata.tables
-        )
-        await asyncio.gather(*tasks)
+async def delete_data(async_session):
+    for table_name in ['posts', 'users']:
+        await async_session.execute(sa.text(f'DELETE FROM {table_name}'))
+        await async_session.commit()
 
 
-@pytest_asyncio.fixture()
-async def create_user(async_session: AsyncSession):
+@pytest.fixture
+def create_user(async_session: AsyncSession):
     async def _create_user(username: str, password: str) -> tuple[str, UserInDB]:
         cursor: CursorResult = await async_session.execute(
             insert(User).values(username=username, password=get_password_hash(password)).returning(User)

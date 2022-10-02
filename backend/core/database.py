@@ -10,7 +10,7 @@ settings = AppSettings()
 
 Base = declarative_base()
 
-async_engine = create_async_engine(settings.DATABASE_URI, echo=settings.POSTGRES_DB_ECHO)
+async_engine = create_async_engine(settings.DATABASE_URI, echo=settings.POSTGRES_DB_ECHO, pool_pre_ping=True)
 async_session = sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
 
 

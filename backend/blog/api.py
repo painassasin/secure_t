@@ -47,14 +47,18 @@ async def create_comment(
     data: CreateComment,
     user: User = Depends(auth_required),
     blog_service: BlogService = Depends(),
+    post_repository: PostRepository = Depends(),
 ):
+    if not (post := await post_repository.get_post_in_db(post_id)):
+        raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
+
     if not (comment := await blog_service.create_comment(
         owner_id=user.id,
         text=data.text,
         parent_id=data.parent_id,
-        post_id=post_id
+        post_id=post.id
     )):
-        raise HTTPException(detail='Invalid post or parentId', status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(detail='Invalid parentId', status_code=status.HTTP_400_BAD_REQUEST)
     return comment
 
 
@@ -79,7 +83,7 @@ async def delete_post(
     user: User = Depends(auth_required),
     post_repository: PostRepository = Depends(),
 ):
-    if not (post := await post_repository.get_post_in_db(post_id=post_id)):
+    if not (post := await post_repository.get_post_or_comment_in_db(post_id=post_id)):
         raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
 
     if post.owner_id != user.id:
