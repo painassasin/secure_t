@@ -54,12 +54,14 @@ class PostWithUser(BaseModel):
     owner: User
 
     @classmethod
-    def from_db(cls, post_id: int, text: str, created_at: datetime, comments_count: int, user_id: int, username: str):
+    def from_db(
+        cls, post_id: int, text: str, created_at: datetime, comments_count: int | None, user_id: int, username: str
+    ):
         return cls(
             id=post_id,
             text=text,
             created_at=created_at,
-            comments_count=comments_count,
+            comments_count=comments_count or 0,
             owner=User(
                 id=user_id,
                 username=username
@@ -72,7 +74,7 @@ class PostComment(BaseModel):
     created_at: datetime
     owner: User
     text: str
-    comments: list = []
+    comments: list['PostComment'] = []
 
     @classmethod
     def transform_tree(cls, comments: list, parent_id: int | None = None) -> list[dict]:

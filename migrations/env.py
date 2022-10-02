@@ -6,7 +6,7 @@ from sqlalchemy import engine_from_config, pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from backend.core import settings
+from backend.core.config import AppSettings
 from backend.models import Base
 
 
@@ -17,7 +17,7 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-config.set_main_option('sqlalchemy.url', settings.DATABASE_URI)
+config.set_main_option('sqlalchemy.url', AppSettings().DATABASE_URI)
 
 
 def run_migrations_offline() -> None:

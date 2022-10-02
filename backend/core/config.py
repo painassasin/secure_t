@@ -1,6 +1,10 @@
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseSettings, PostgresDsn, validator
+
+
+BASE_DIR = Path(__file__).parent.parent.parent.resolve()
 
 
 class AppSettings(BaseSettings):
@@ -31,7 +35,4 @@ class AppSettings(BaseSettings):
 
     class Config:
         env_file_encoding = 'utf-8'
-        env_file = '.env'
-
-
-settings = AppSettings()
+        env_file = BASE_DIR.joinpath('.env')

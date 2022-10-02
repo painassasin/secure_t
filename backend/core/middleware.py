@@ -1,15 +1,21 @@
 from fastapi.openapi.models import Response
+from sqlalchemy.exc import DBAPIError
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 
-from backend.core.common import SESSION
-from backend.core.database import get_session
+from backend.core.context_vars import SESSION
+from backend.core.database import async_session
 
 
 class SessionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        db_session = await anext(get_session())
-        SESSION.set(db_session)
-        response = await call_next(request)
-        SESSION.set(None)
-        return response
+        async with async_session() as db_session:
+            SESSION.set(db_session)
+            try:
+                return await call_next(request)
+            except DBAPIError:
+                await db_session.rollback()
+                raise
+            finally:
+                await db_session.close()
+                SESSION.set(None)

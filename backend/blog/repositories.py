@@ -9,7 +9,7 @@ from sqlalchemy.sql import Select
 from backend.auth.models import User
 from backend.blog.models import Post
 from backend.blog.schemas import PostComment, PostInDB, PostWithUser
-from backend.core.common import BaseRepository
+from backend.core.repository import BaseRepository
 
 
 class InvalidPostId(Exception):
@@ -127,9 +127,15 @@ class PostRepository(BaseRepository):
         await self._db_session.commit()
         return PostInDB.parse_obj(cursor.mappings().one())
 
-    async def get_post_in_db(self, post_id) -> PostInDB | None:
+    async def get_post_or_comment_in_db(self, post_id) -> PostInDB | None:
         if post := (await self._db_session.execute(
             select(Post).filter(Post.id == post_id)
+        )).scalar_one_or_none():
+            return PostInDB.from_orm(post)
+
+    async def get_post_in_db(self, post_id) -> PostInDB | None:
+        if post := (await self._db_session.execute(
+            select(Post).filter(Post.id == post_id, Post.post_id.is_(None))
         )).scalar_one_or_none():
             return PostInDB.from_orm(post)
 
