@@ -30,7 +30,7 @@ jobs:
           poetry install
       - name: Run tests
         env:
-          DATABASE_URL: 'postgresql+asyncpg://postgres:postgres@127.0.0.1:15432/postgres'
+          DATABASE_URI: 'postgresql+asyncpg://postgres:postgres@127.0.0.1:15432/postgres'
           SECRET_KEY: 'you-will-never-guess'
         run: |
           poetry run sh -c "pytest . -v"
