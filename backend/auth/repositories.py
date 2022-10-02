@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from backend.auth.models import User
 from backend.auth.schemas import UserInDB
-from backend.core.common import BaseRepository
+from backend.core.repository import BaseRepository
 
 
 class UserAlreadyExists(Exception):

@@ -5,7 +5,7 @@ from starlette.responses import JSONResponse
 
 from backend.auth.api import auth_router, users_router
 from backend.blog.api import router as blog_router
-from backend.core import settings
+from backend.core.config import AppSettings
 from backend.core.logging.config import log_config
 from backend.core.middleware import SessionMiddleware
 
@@ -15,6 +15,8 @@ async def health_check():
 
 
 dictConfig(log_config)
+
+settings = AppSettings()
 
 app = FastAPI(debug=settings.DEBUG)
 

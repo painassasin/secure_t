@@ -7,21 +7,21 @@ import sqlalchemy as sa
 from httpx import AsyncClient
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app import app
 from backend.auth.models import User
 from backend.auth.schemas import TokenData, UserInDB
 from backend.auth.utils import get_access_token, get_password_hash
-from backend.core.database import async_engine, get_session
+from backend.core.database import async_engine
+from backend.core.database import async_session as async_session_maker
 from backend.models import Base
 
 
 @pytest.fixture(scope='session')
-def event_loop(request) -> Generator:
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+def event_loop():
+    return asyncio.get_event_loop()
 
 
 @pytest_asyncio.fixture
@@ -35,12 +35,18 @@ async def make_migrations():
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    await async_engine.dispose()
 
 
 @pytest_asyncio.fixture
 async def async_session():
-    yield await anext(get_session())
+    async with async_session_maker() as db_session:
+        try:
+            yield db_session
+        except DBAPIError:
+            await db_session.rollback()
+            raise
+        finally:
+            await db_session.close()
 
 
 @pytest_asyncio.fixture(autouse=True)
@@ -51,7 +57,6 @@ async def delete_data():
             for table_name in Base.metadata.tables
         )
         await asyncio.gather(*tasks)
-    await async_engine.dispose()
 
 
 @pytest_asyncio.fixture()
@@ -60,8 +65,8 @@ async def create_user(async_session: AsyncSession):
         cursor: CursorResult = await async_session.execute(
             insert(User).values(username=username, password=get_password_hash(password)).returning(User)
         )
-        await async_session.commit()
         user: UserInDB = UserInDB.parse_obj(cursor.mappings().one())
+        await async_session.commit()
         access_token: str = get_access_token(token_data=TokenData.parse_obj(user))
         return f'Bearer {access_token}', user
 

@@ -9,7 +9,7 @@ from sqlalchemy.sql import Select
 from backend.auth.models import User
 from backend.blog.models import Post
 from backend.blog.schemas import PostComment, PostInDB, PostWithUser
-from backend.core.common import BaseRepository
+from backend.core.repository import BaseRepository
 
 
 class InvalidPostId(Exception):

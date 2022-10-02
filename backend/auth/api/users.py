@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from backend.auth.schemas import User
 from backend.auth.utils import auth_required
-from backend.core.common import USER
+from backend.core.context_vars import USER
 
 
 router = APIRouter(prefix='/users', tags=['Users'])
