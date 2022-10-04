@@ -34,9 +34,9 @@ async def get_all_posts(
 @router.get('/{post_id}/', response_model=PostWithComments)
 async def get_post_description(
     post_id: int,
-    blog_service: BlogService = Depends(),
+    post_repository: PostRepository = Depends(),
 ):
-    if not (post := await blog_service.get_post(post_id=post_id)):
+    if not (post := await post_repository.get_single_post(post_id=post_id)):
         raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
     return post
 

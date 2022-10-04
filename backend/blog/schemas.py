@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator, validator
 
 
 class CreatePost(BaseModel):
@@ -53,20 +54,15 @@ class PostWithUser(BaseModel):
     comments_count: int
     owner: User
 
-    @classmethod
-    def from_db(
-        cls, post_id: int, text: str, created_at: datetime, comments_count: int | None, user_id: int, username: str
-    ):
-        return cls(
-            id=post_id,
-            text=text,
-            created_at=created_at,
-            comments_count=comments_count or 0,
-            owner=User(
-                id=user_id,
-                username=username
-            )
-        )
+    @root_validator(pre=True)
+    def set_owner(cls, values: dict):
+        if 'owner' not in values:
+            values['owner'] = User(id=values['user_id'], username=values['username'])
+        return values
+
+    @validator('comments_count', pre=True)
+    def set_not_null_comments_count(cls, value: int | None):
+        return value or 0
 
 
 class PostComment(BaseModel):
@@ -76,28 +72,33 @@ class PostComment(BaseModel):
     text: str
     comments: list['PostComment'] = []
 
+    @root_validator(pre=True)
+    def set_owner(cls, values: dict):
+        if 'owner' not in values:
+            values['owner'] = User(id=values['user_id'], username=values['username'])
+        return values
+
     @classmethod
-    def transform_tree(cls, comments: list, parent_id: int | None = None) -> list[dict]:
-        result = []
+    def get_comments(cls, post_comments: list[dict], parent_id: int | None = None) -> list['PostComment']:
+        results: list['PostComment'] = []
 
-        for comment in comments:
-
-            # 'RowMapping' object does not support item assignment
-            comment = dict(comment)
-
-            if 'owner' not in comment:
-                user_id = comment['user_id']
-                username = comment['username']
-                comment['owner'] = {'id': user_id, 'username': username}
-            if comment['parent_id'] == parent_id:
-                comment['comments'] = cls.transform_tree(comments, comment['id'])
-                result.append(comment)
-
-        return result
+        for post_comment in post_comments.copy():
+            if post_comment['parent_id'] == parent_id:
+                item = cls.parse_obj(post_comment)
+                item.comments = cls.get_comments(post_comments, item.id)
+                results.append(item)
+                post_comments.remove(post_comment)
+        return results
 
 
 class PostWithComments(PostWithUser):
     comments: list[PostComment] = []
+
+    @classmethod
+    def from_db_list(cls, post_comments: list[dict]) -> Optional['PostWithComments']:
+        data_length = len(post_comments)
+        if comments := PostComment.get_comments(post_comments):
+            return cls(**comments[0].dict(), comments_count=data_length - 1)
 
 
 class UpdatePost(BaseModel):
