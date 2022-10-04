@@ -21,9 +21,9 @@ def create_post(async_session: AsyncSession):
 
 @pytest.fixture
 def create_comment(async_session: AsyncSession):
-    async def _create_comment(text: str, owner_id: int, post_id: int, parent_id: int) -> PostInDB:
+    async def _create_comment(text: str, owner_id: int, parent_id: int) -> PostInDB:
         cursor: CursorResult = await async_session.execute(
-            insert(Post).values(text=text, owner_id=owner_id, post_id=post_id, parent_id=parent_id).returning(Post)
+            insert(Post).values(text=text, owner_id=owner_id, parent_id=parent_id).returning(Post)
         )
         await async_session.commit()
         return PostInDB.parse_obj(cursor.mappings().one())

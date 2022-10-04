@@ -6,7 +6,7 @@ from backend.blog.models import Post
 
 @pytest.mark.asyncio
 class TestCreateComment:
-    url = '/posts/{post_id}/comments/'
+    url = '/comments/'
 
     async def test_auth_required(self, async_client):
         response = await async_client.post(self.url.format(post_id=1), json={'text': 'new_comment'})
@@ -18,30 +18,34 @@ class TestCreateComment:
         token, _ = await create_user('user', 'password')
 
         response = await async_client.post(
-            url=self.url.format(post_id=1),
+            url=self.url,
             json={'text': 'new_comment', 'parent_id': 1},
             headers={'Authorization': token}
         )
-        assert response.status_code == 404
+        assert response.status_code == 400
 
     @pytest.mark.parametrize('increase', [1, 2])
-    async def test_invalid_parent_id(self, async_client, create_post, create_user, increase):
+    async def test_invalid_parent_id(self, async_client, create_post, create_user, increase, async_session):
         token, user = await create_user('user', 'password')
         post = await create_post('post', owner_id=user.id)
 
+        assert (await async_session.execute(select(func.count(Post.id)))).scalar() == 1
+
         response = await async_client.post(
-            url=self.url.format(post_id=post.id),
+            url=self.url,
             json={'text': 'new_comment', 'parent_id': post.id + increase},
             headers={'Authorization': token}
         )
         assert response.status_code == 400
+
+        assert (await async_session.execute(select(func.count(Post.id)))).scalar() == 1
 
     async def test_success(self, async_client, create_post, create_user, async_session):
         token, user = await create_user('user', 'password')
         post = await create_post('post', owner_id=user.id)
 
         response = await async_client.post(
-            url=self.url.format(post_id=post.id),
+            url=self.url,
             json={'text': 'new_comment', 'parent_id': post.id},
             headers={'Authorization': token}
         )
@@ -54,5 +58,4 @@ class TestCreateComment:
             'owner_id': user.id,
             'text': new_comment.text,
             'parent_id': post.id,
-            'post_id': post.id
         }

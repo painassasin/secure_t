@@ -14,28 +14,24 @@ class BlogService:
     def __init__(self) -> None:
         self._post_repository: PostRepository = PostRepository()
 
-    async def create_post(self, owner_id: int, text: str) -> Post | None:
-        try:
-            new_post = await self._post_repository.create_post(owner_id, text)
-        except InvalidPostId:
-            return None
-        else:
-            return Post.parse_obj(new_post)
+    async def create_post(self, owner_id: int, text: str) -> Post:
+        return Post.parse_obj(await self._post_repository.create_post(owner_id, text))
 
-    async def create_comment(self, owner_id: int, text: str, parent_id: int, post_id: int) -> Comment | None:
+    async def create_comment(self, owner_id: int, text: str, parent_id: int) -> Comment | None:
         try:
             new_comment = await self._post_repository.create_post(
                 owner_id=owner_id,
                 text=text,
                 parent_id=parent_id,
-                post_id=post_id,
             )
         except InvalidPostId:
             return None
         else:
-            # Без этого условия можно будет создать комментарий ссылающийся сам на себя
+            # TODO: Без этого условия можно будет создать комментарий ссылающийся сам на себя, однако он создался (
             if new_comment.id != new_comment.parent_id:
                 return Comment.parse_obj(new_comment)
+            else:
+                await self._post_repository.delete_post(new_comment.id)
 
     async def get_all_posts(self, limit: int, offset: int) -> tuple[int, list[PostWithUser]]:
         total = await self._post_repository.get_posts_count()
