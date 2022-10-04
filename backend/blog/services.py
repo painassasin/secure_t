@@ -27,11 +27,7 @@ class BlogService:
         except InvalidPostId:
             return None
         else:
-            # TODO: Без этого условия можно будет создать комментарий ссылающийся сам на себя, однако он создался (
-            if new_comment.id != new_comment.parent_id:
-                return Comment.parse_obj(new_comment)
-            else:
-                await self._post_repository.delete_post(new_comment.id)
+            return Comment.parse_obj(new_comment)
 
     async def get_all_posts(self, limit: int, offset: int) -> tuple[int, list[PostWithUser]]:
         total = await self._post_repository.get_posts_count()

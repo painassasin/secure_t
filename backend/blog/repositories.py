@@ -1,6 +1,5 @@
 from sqlalchemy import delete, desc, func, literal, select, update
 from sqlalchemy.dialects.postgresql import Insert, insert
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import Select
@@ -36,14 +35,20 @@ class PostRepository(BaseRepository):
         ).returning(Post)
 
         try:
-            cursor: CursorResult = await self._db_session.execute(stmt)
-            await self._db_session.commit()
-        except IntegrityError as e:
+            post = PostInDB.parse_obj((await self._db_session.execute(stmt)).mappings().one())
+            if post.id == parent_id:
+                await self.delete_post(post_id=post.id)
+                raise ValueError(
+                    'Пост не может ссылаться на самого себя, parent_id=%s, post_id=%d',
+                    parent_id, post.id
+                )
+        except (ValueError, IntegrityError) as e:
             await self._db_session.rollback()
             self._logger.info(e)
             raise InvalidPostId
         else:
-            return PostInDB.parse_obj(cursor.mappings().one())
+            await self._db_session.commit()
+            return post
 
     async def get_all_posts(self, limit: int, offset: int) -> list[PostWithUser]:
         """
