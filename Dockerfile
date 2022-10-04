@@ -1,4 +1,5 @@
-FROM python:3.10.1-slim-bullseye
+FROM python:3.10-slim
+MAINTAINER painassasin@icloud.com
 
 WORKDIR /opt/
 
