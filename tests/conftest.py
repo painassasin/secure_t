@@ -1,19 +1,19 @@
 import asyncio
-from typing import Coroutine, Generator
+from unittest.mock import AsyncMock, Mock, patch
 
+import asyncpg
 import pytest
 import pytest_asyncio
-import sqlalchemy as sa
 from httpx import AsyncClient
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import CursorResult
-from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app import app
 from backend.auth.models import User
 from backend.auth.schemas import TokenData, UserInDB
 from backend.auth.utils import get_access_token, get_password_hash
+from backend.core.context_vars import SESSION
 from backend.core.database import async_engine
 from backend.core.database import async_session as async_session_maker
 from backend.models import Base
@@ -25,38 +25,44 @@ def event_loop():
 
 
 @pytest_asyncio.fixture
-async def async_client() -> AsyncClient:
-    async with AsyncClient(app=app, base_url='http://0.0.0.0') as ac:
-        yield ac
+async def async_session():
+    async with async_session_maker() as db_session:
+        db_session.begin = Mock(
+            return_value=Mock(
+                __aenter__=AsyncMock(),
+                __aexit__=AsyncMock(return_value=None)
+            )
+        )
+        db_session.commit = AsyncMock()
+        db_session.close = AsyncMock()
+        SESSION.set(db_session)
+
+        yield db_session
+        await db_session.rollback()
 
 
 @pytest_asyncio.fixture(scope='session', autouse=True)
 async def make_migrations():
+    conn = asyncpg.connect('postgresql+asyncpg://postgres:postgres@127.0.0.1:15432/postgres')
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
 
-@pytest_asyncio.fixture
-async def async_session():
-    async with async_session_maker() as db_session:
-        try:
-            yield db_session
-        except DBAPIError:
-            await db_session.rollback()
-            raise
-        finally:
-            await db_session.close()
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def delete_data():
-    async with async_engine.begin() as conn:
-        tasks: Generator[Coroutine] = (
-            conn.execute(sa.text(f'DELETE FROM {table_name}'))
-            for table_name in ['posts', 'users']
+@pytest.fixture(autouse=True)
+def mock_session_middleware(async_session):
+    with patch('backend.core.middleware.async_session') as mock:
+        mock.return_value = AsyncMock(
+            __aenter__=AsyncMock(return_value=async_session),
+            __aexit__=AsyncMock(return_value=None)
         )
-        await asyncio.gather(*tasks)
+        yield mock
+
+
+@pytest_asyncio.fixture
+async def async_client() -> AsyncClient:
+    async with AsyncClient(app=app, base_url='http://0.0.0.0') as ac:
+        yield ac
 
 
 @pytest.fixture
