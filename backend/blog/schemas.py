@@ -20,7 +20,6 @@ class PostInDB(BaseModel):
     owner_id: int
     text: str
     parent_id: int | None
-    post_id: int | None
 
     class Config:
         orm_mode = True
@@ -33,13 +32,8 @@ class Post(BaseModel):
     text: str
 
 
-class Comment(BaseModel):
-    id: int
-    created_at: datetime
-    owner_id: int
-    text: str
+class Comment(Post):
     parent_id: int
-    post_id: int
 
 
 class User(BaseModel):

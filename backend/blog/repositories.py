@@ -23,18 +23,16 @@ class PostRepository(BaseRepository):
         owner_id: int,
         text: str,
         parent_id: int | None = None,
-        post_id: int | None = None
     ) -> PostInDB:
         """
-        INSERT INTO posts p (owner_id, text, parent_id, post_id)
-        VALUES (:owner_id, :text, :parent_id, :post_id)
-        RETURNING (p.id, p.created_at, p.updated_at, p.owner_id, p.text, p.parent_id, p.post_id)
+        INSERT INTO posts p (owner_id, text, parent_id)
+        VALUES (:owner_id, :text, :parent_id)
+        RETURNING (p.id, p.created_at, p.updated_at, p.owner_id, p.text, p.parent_id)
         """
         stmt: Insert = insert(Post).values(
             owner_id=owner_id,
             text=text,
             parent_id=parent_id,
-            post_id=post_id
         ).returning(Post)
 
         try:
@@ -109,10 +107,10 @@ class PostRepository(BaseRepository):
 
     async def get_posts_count(self) -> int:
         """
-        SELECT COUNT(p.id) FROM posts p WHERE p.parent_id IS NULL
+        SELECT COUNT(*) FROM posts p WHERE p.parent_id IS NULL
         """
         return (await self._db_session.execute(
-            select(func.count(Post.id)).filter(Post.parent_id.is_(None))
+            select(func.count()).filter(Post.parent_id.is_(None))
         )).scalar()
 
     async def update_post(self, post_id: int, owner_id: int, **values) -> PostInDB:
@@ -134,7 +132,7 @@ class PostRepository(BaseRepository):
 
     async def get_post_in_db(self, post_id) -> PostInDB | None:
         if post := (await self._db_session.execute(
-            select(Post).filter(Post.id == post_id, Post.post_id.is_(None))
+            select(Post).filter(Post.id == post_id, Post.parent_id.is_(None))
         )).scalar_one_or_none():
             return PostInDB.from_orm(post)
 
@@ -147,46 +145,41 @@ class PostRepository(BaseRepository):
 
     async def get_single_post(self, post_id: int) -> PostWithComments | None:
         """
-        WITH RECURSIVE anon_1(id, parent_id, "text", owner_id, created_at) AS (
+        WITH RECURSIVE cte(id, parent_id, "text", owner_id, created_at) AS (
                 SELECT p.id, p.parent_id, p."text", p.owner_id, p.created_at
                 FROM posts p WHERE p.id = :post_id
             UNION ALL
                 SELECT t.id, t.parent_id, t."text", t.owner_id, t.created_at
-                FROM posts t JOIN anon_1 AS cte ON cte.id = t.parent_id
+                FROM posts t JOIN cte ON cte.id = t.parent_id
         )
         SELECT cte.created_at, cte.id, cte.parent_id, cte."text", u.id "user_id", u.username
-        FROM anon_1 AS cte LEFT JOIN users u ON u.id = cte.owner_id
+        FROM cte LEFT JOIN users u ON u.id = cte.owner_id
         ORDER_BY cte.created_at DESC
         """
 
-        rec: CTE = select(
-            Post.id, Post.parent_id, Post.text, Post.owner_id, Post.created_at
-        ).filter(
-            Post.id == post_id
-        ).cte(recursive=True)
+        p = aliased(Post, name='p')
+        cte: CTE = select(
+            p.id, p.parent_id, p.text, p.owner_id, p.created_at
+        ).filter(p.id == post_id).cte('cte', recursive=True)
 
-        cte = aliased(rec, name='cte')
-        p = aliased(Post, name='t')
-
-        rec = rec.union_all(
+        t = aliased(Post, name='t')
+        cte = cte.union_all(
             select(
-                p.id, p.parent_id, p.text, p.owner_id, p.created_at
-            ).join(
-                cte, cte.c.id == p.parent_id
-            )
+                t.id, t.parent_id, t.text, t.owner_id, t.created_at
+            ).join(cte, cte.c.id == t.parent_id)
         )
 
         stmt: Select = select(
-            rec.c.created_at,
-            rec.c.id,
-            rec.c.parent_id,
-            rec.c.text,
+            cte.c.created_at,
+            cte.c.id,
+            cte.c.parent_id,
+            cte.c.text,
             User.id.label('user_id'),
             User.username
         ).join(
-            User, User.id == rec.c.owner_id
+            User, User.id == cte.c.owner_id
         ).order_by(
-            desc(rec.c.created_at)
+            desc(cte.c.created_at)
         )
 
         return PostWithComments.from_db_list(

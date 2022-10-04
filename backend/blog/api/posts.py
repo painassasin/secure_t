@@ -4,7 +4,7 @@ from starlette import status
 from backend.auth.schemas import User
 from backend.auth.utils import auth_required
 from backend.blog.repositories import PostRepository
-from backend.blog.schemas import Comment, CreateComment, CreatePost, Post, PostWithComments, PostWithUser, UpdatePost
+from backend.blog.schemas import CreatePost, Post, PostWithComments, PostWithUser, UpdatePost
 from backend.blog.services import BlogService, NotOwner, PostNotFound
 from backend.core.pagination import Page, paginate
 
@@ -32,34 +32,13 @@ async def get_all_posts(
 
 
 @router.get('/{post_id}/', response_model=PostWithComments)
-async def get_post_description(
+async def get_single_post(
     post_id: int,
     post_repository: PostRepository = Depends(),
 ):
     if not (post := await post_repository.get_single_post(post_id=post_id)):
         raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
     return post
-
-
-@router.post('/{post_id}/comments/', response_model=Comment, status_code=status.HTTP_201_CREATED)
-async def create_comment(
-    post_id: int,
-    data: CreateComment,
-    user: User = Depends(auth_required),
-    blog_service: BlogService = Depends(),
-    post_repository: PostRepository = Depends(),
-):
-    if not (post := await post_repository.get_post_in_db(post_id)):
-        raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
-
-    if not (comment := await blog_service.create_comment(
-        owner_id=user.id,
-        text=data.text,
-        parent_id=data.parent_id,
-        post_id=post.id
-    )):
-        raise HTTPException(detail='Invalid parentId', status_code=status.HTTP_400_BAD_REQUEST)
-    return comment
 
 
 @router.patch('/{post_id}/', response_model=Post)

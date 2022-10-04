@@ -23,7 +23,6 @@ class TestCreatePost:
         assert response.status_code == 201
         new_post: Post = (await async_session.execute(select(Post))).scalar_one()
         assert new_post.parent_id is None
-        assert new_post.post_id is None
         assert response.json() == {
             'id': new_post.id,
             'created_at': new_post.created_at.isoformat(),
@@ -100,9 +99,9 @@ class TestGetAllPosts:
     async def test_post_with_comments(self, create_user, create_post, create_comment, async_client):
         _, user = await create_user('user', 'password')
         post = await create_post(text='post', owner_id=user.id)
-        comment_1 = await create_comment(text='comment_1', owner_id=user.id, post_id=post.id, parent_id=post.id)
-        _ = await create_comment(text='comment_2', owner_id=user.id, post_id=post.id, parent_id=comment_1.id)
-        _ = await create_comment(text='comment_3', owner_id=user.id, post_id=post.id, parent_id=post.id)
+        comment_1 = await create_comment(text='comment_1', owner_id=user.id, parent_id=post.id)
+        _ = await create_comment(text='comment_2', owner_id=user.id, parent_id=comment_1.id)
+        _ = await create_comment(text='comment_3', owner_id=user.id, parent_id=post.id)
 
         response = await async_client.get(self.url)
         assert response.status_code == 200
@@ -155,12 +154,12 @@ class TestGetPostDescription:
         _, user_2 = await create_user('user_2', 'password')
 
         post = await create_post(text='post', owner_id=user_1.id)
-        comment_1 = await create_comment(text='comment_1', owner_id=user_2.id, parent_id=post.id, post_id=post.id)
-        comment_2 = await create_comment(text='comment_2', owner_id=user_1.id, parent_id=comment_1.id, post_id=post.id)
-        comment_3 = await create_comment(text='comment_3', owner_id=user_2.id, parent_id=post.id, post_id=post.id)
-        comment_4 = await create_comment(text='comment_4', owner_id=user_1.id, parent_id=comment_3.id, post_id=post.id)
-        comment_5 = await create_comment(text='comment_5', owner_id=user_2.id, parent_id=comment_4.id, post_id=post.id)
-        comment_6 = await create_comment(text='comment_6', owner_id=user_1.id, parent_id=comment_3.id, post_id=post.id)
+        comment_1 = await create_comment(text='comment_1', owner_id=user_2.id, parent_id=post.id)
+        comment_2 = await create_comment(text='comment_2', owner_id=user_1.id, parent_id=comment_1.id)
+        comment_3 = await create_comment(text='comment_3', owner_id=user_2.id, parent_id=post.id)
+        comment_4 = await create_comment(text='comment_4', owner_id=user_1.id, parent_id=comment_3.id)
+        comment_5 = await create_comment(text='comment_5', owner_id=user_2.id, parent_id=comment_4.id)
+        comment_6 = await create_comment(text='comment_6', owner_id=user_1.id, parent_id=comment_3.id)
 
         response = await async_client.get(self.url.format(post_id=post.id))
         assert response.status_code == 200
@@ -303,8 +302,8 @@ class TestDeletePost:
 
         if with_comments:
             _, user2 = await create_user('user2', 'password')
-            comment_1 = await create_comment(text='comment_1', owner_id=user2.id, parent_id=post.id, post_id=post.id)
-            _ = await create_comment(text='comment_2', owner_id=user.id, parent_id=comment_1.id, post_id=post.id)
+            comment_1 = await create_comment(text='comment_1', owner_id=user2.id, parent_id=post.id)
+            _ = await create_comment(text='comment_2', owner_id=user.id, parent_id=comment_1.id)
 
         response = await async_client.delete(
             url=self.url.format(post_id=post.id),
