@@ -97,6 +97,30 @@ class TestGetAllPosts:
             ]
         }
 
+    async def test_post_with_comments(self, create_user, create_post, create_comment, async_client):
+        _, user = await create_user('user', 'password')
+        post = await create_post(text='post', owner_id=user.id)
+        comment_1 = await create_comment(text='comment_1', owner_id=user.id, post_id=post.id, parent_id=post.id)
+        _ = await create_comment(text='comment_2', owner_id=user.id, post_id=post.id, parent_id=comment_1.id)
+        _ = await create_comment(text='comment_3', owner_id=user.id, post_id=post.id, parent_id=post.id)
+
+        response = await async_client.get(self.url)
+        assert response.status_code == 200
+        assert response.json() == {
+            'limit': 10,
+            'offset': 0,
+            'total': 1,
+            'items': [
+                {
+                    'id': post.id,
+                    'text': post.text,
+                    'created_at': post.created_at.isoformat(),
+                    'comments_count': 3,
+                    'owner': {'id': user.id, 'username': user.username}
+                },
+            ]
+        }
+
 
 @pytest.mark.asyncio
 class TestGetPostDescription:
