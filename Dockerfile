@@ -9,20 +9,18 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=on \
 
 RUN groupadd --system service && useradd --system -g service api
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && apt-get autoclean && apt-get autoremove \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
-    && pip install "poetry==$POETRY_VERSION" \
-    && poetry config virtualenvs.create false
+RUN pip install "poetry==$POETRY_VERSION"
 
-COPY poetry.lock poetry.lock
-COPY pyproject.toml pyproject.toml
+COPY poetry.lock pyproject.toml ./
+RUN  poetry config virtualenvs.create false \
+     && poetry install --no-root --no-dev --no-interaction --no-ansi
 
-RUN poetry install --no-root --no-dev
-
-COPY backend backend
-COPY migrations migrations
-COPY alembic.ini alembic.ini
+COPY . .
 
 USER api
+
+EXPOSE 8000
+
+ENTRYPOINT ["bash", "entrypoint.sh"]
+
+CMD ["uvicorn", "backend.app:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
