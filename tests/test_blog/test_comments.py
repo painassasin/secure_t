@@ -29,8 +29,6 @@ class TestCreateComment:
         token, user = await create_user('user', 'password')
         post = await create_post('post', owner_id=user.id)
 
-        assert (await async_session.execute(select(func.count(Post.id)))).scalar() == 1
-
         response = await async_client.post(
             url=self.url,
             json={'text': 'new_comment', 'parent_id': post.id + increase},
@@ -38,7 +36,9 @@ class TestCreateComment:
         )
         assert response.status_code == 400
 
-        assert (await async_session.execute(select(func.count(Post.id)))).scalar() == 1
+        assert not (await async_session.execute(
+            select(func.count()).filter(Post.parent_id == post.id + increase)
+        )).scalar()
 
     async def test_success(self, async_client, create_post, create_user, async_session):
         token, user = await create_user('user', 'password')

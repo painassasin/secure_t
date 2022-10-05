@@ -54,8 +54,6 @@ docker-compose up -d db api
 
 
 ### Тесты
-Для запуска тестов нужно поднять отдельную базу
 ```shell
-docker-compose up -d db_test
 pytest
 ```
