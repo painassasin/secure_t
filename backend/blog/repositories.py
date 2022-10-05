@@ -25,21 +25,17 @@ class PostRepository(BaseRepository):
                 insert(Post).values(owner_id=owner_id, text=text, parent_id=parent_id).returning(Post)
             )).mappings().one())
             if post.id == parent_id:
-                await self._db_session.execute(delete(Post).filter(Post.id == post.id))
                 raise ValueError(
                     'Пост не может ссылаться на самого себя, parent_id=%s, post_id=%d',
                     parent_id, post.id
                 )
-        except IntegrityError as e:
+        except (IntegrityError, ValueError) as e:
             await self._db_session.rollback()
             self._logger.info(e)
-        except ValueError as e:
-            await self._db_session.commit()
-            self._logger.info(e)
+            raise InvalidPostId
         else:
             await self._db_session.commit()
             return post
-        raise InvalidPostId
 
     async def get_all_posts(self, limit: int, offset: int) -> list[PostWithUser]:
         """
