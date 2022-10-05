@@ -1,87 +1,92 @@
 import asyncio
 from datetime import datetime
 from typing import TypeVar
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 
 import asyncpg
 import pytest
 import pytest_asyncio
+from asyncpg import Connection
 from httpx import AsyncClient
 from pydantic import PostgresDsn
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
 
 from backend.app import app
 from backend.auth.models import User
 from backend.auth.schemas import TokenData, UserInDB
 from backend.auth.utils import get_access_token, get_password_hash
 from backend.core.config import AppSettings
-from backend.core.context_vars import SESSION
 from backend.core.database import TimestampMixin
 from backend.models import Base
 
 
 settings = AppSettings()
 
-T = TypeVar('T')
+T = TypeVar('T', bound=Base)
 
 
 @pytest.fixture(scope='session')
 def event_loop():
-    return asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture(scope='session')
-def test_db_name():
-    return f'{settings.POSTGRES_DB}_test'
-
-
-@pytest.fixture(scope='session')
-def test_engine(test_db_name):
-    test_dsn = PostgresDsn.build(
+def database_url() -> str:
+    return PostgresDsn.build(
         scheme='postgresql+asyncpg',
         user=settings.POSTGRES_USER,
         password=settings.POSTGRES_PASSWORD,
         host=settings.POSTGRES_HOST,
-        path=f'/{test_db_name}',
+        path=f'/{settings.TEST_POSTGRES_DB}',
     )
-    return create_async_engine(test_dsn, echo=True)
+
+
+@pytest_asyncio.fixture(scope='session')
+async def test_engine(database_url):
+    engine = create_async_engine(database_url, echo=True)
+    yield engine
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture
 async def async_session(test_engine):
-    session_maker = sessionmaker(test_engine, expire_on_commit=False, class_=AsyncSession)
-    async with session_maker() as db_session:
-        db_session.begin = Mock(
-            return_value=Mock(
-                __aenter__=AsyncMock(),
-                __aexit__=AsyncMock(return_value=None)
-            )
-        )
-        db_session.commit = AsyncMock()
-        db_session.close = AsyncMock()
-        SESSION.set(db_session)
+    async with test_engine.connect() as conn:
+        await conn.begin()
+        await conn.begin_nested()
+
+        db_session = AsyncSession(bind=conn)
+
+        @event.listens_for(db_session.sync_session, 'after_transaction_end')
+        def end_savepoint(session, transaction):
+            if conn.closed:
+                return
+            if not conn.in_nested_transaction():
+                conn.sync_connection.begin_nested()
 
         yield db_session
-        await db_session.rollback()
-        SESSION.set(None)
+        await db_session.close()
+        await conn.rollback()
 
 
 @pytest_asyncio.fixture(scope='session', autouse=True)
-async def make_migrations(test_db_name, test_engine):
-    conn = await asyncpg.connect(
-        host=settings.POSTGRES_HOST,
-        user=settings.POSTGRES_USER,
-        password=settings.POSTGRES_PASSWORD,
-        database=settings.POSTGRES_DB,
+async def make_migrations(test_engine):
+    sync_conn: Connection = await asyncpg.connect(
+        host=settings.DATABASE_URI.host,
+        user=settings.DATABASE_URI.user,
+        password=settings.DATABASE_URI.password,
+        database=settings.DATABASE_URI.path.lstrip('/'),
     )
-    await conn.execute(f'DROP DATABASE IF EXISTS {test_db_name}')
-    await conn.execute(f'CREATE DATABASE {test_db_name}')
-    await conn.close()
+    await sync_conn.execute(f'DROP DATABASE IF EXISTS {settings.TEST_POSTGRES_DB}')
+    await sync_conn.execute(f'CREATE DATABASE {settings.TEST_POSTGRES_DB}')
+    await sync_conn.close()
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+    await test_engine.dispose()
 
 
 @pytest.fixture(autouse=True)
@@ -101,14 +106,14 @@ async def async_client() -> AsyncClient:
 
 
 @pytest.fixture()
-def create_obj_in_db(async_session):
+def create_obj_in_db(async_session: AsyncSession):
     async def _create_obj_in_db(obj: T) -> T:
         if isinstance(obj, TimestampMixin):
-            now = datetime.utcnow()
+            now = datetime.now()
             obj.created_at = now
             obj.updated_at = now
         async_session.add(obj)
-        await async_session.flush()
+        await async_session.commit()
         await async_session.refresh(obj)
         return obj
 

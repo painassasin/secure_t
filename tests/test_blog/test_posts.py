@@ -1,5 +1,6 @@
 import pytest
 from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.blog.models import Post
 from backend.blog.schemas import PostInDB
@@ -246,7 +247,7 @@ class TestUpdatePost:
         )
         assert response.status_code == 404
 
-    async def test_success(self, create_user, create_post, async_client):
+    async def test_success(self, create_user, create_post, async_client, async_session: AsyncSession):
         token, user = await create_user('user', 'password')
 
         post = await create_post(text='post', owner_id=user.id)
@@ -264,6 +265,10 @@ class TestUpdatePost:
             'owner_id': user.id,
             'text': 'new_post'
         }
+
+        assert post.updated_at < (await async_session.execute(
+            select(Post.updated_at).filter(Post.id == post.id)
+        )).scalar_one()
 
 
 @pytest.mark.asyncio

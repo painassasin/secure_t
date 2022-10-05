@@ -14,6 +14,7 @@ class AppSettings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
+    TEST_POSTGRES_DB: str = 'testing'
     DATABASE_URI: PostgresDsn | None = None
     POSTGRES_DB_ECHO: bool = False
 

@@ -1,5 +1,7 @@
+from datetime import datetime
+
 from sqlalchemy import delete, desc, func, literal, select, update
-from sqlalchemy.dialects.postgresql import Insert, insert
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 from sqlalchemy.sql import Select
@@ -17,38 +19,27 @@ class InvalidPostId(Exception):
 
 class PostRepository(BaseRepository):
 
-    async def create_post(
-        self,
-        owner_id: int,
-        text: str,
-        parent_id: int | None = None,
-    ) -> PostInDB:
-        """
-        INSERT INTO posts p (owner_id, text, parent_id)
-        VALUES (:owner_id, :text, :parent_id)
-        RETURNING (p.id, p.created_at, p.updated_at, p.owner_id, p.text, p.parent_id)
-        """
-        stmt: Insert = insert(Post).values(
-            owner_id=owner_id,
-            text=text,
-            parent_id=parent_id,
-        ).returning(Post)
-
+    async def create_post(self, owner_id: int, text: str, parent_id: int | None = None) -> PostInDB:
         try:
-            post = PostInDB.parse_obj((await self._db_session.execute(stmt)).mappings().one())
+            post = PostInDB.parse_obj((await self._db_session.execute(
+                insert(Post).values(owner_id=owner_id, text=text, parent_id=parent_id).returning(Post)
+            )).mappings().one())
             if post.id == parent_id:
-                await self.delete_post(post_id=post.id)
+                await self._db_session.execute(delete(Post).filter(Post.id == post.id))
                 raise ValueError(
                     'Пост не может ссылаться на самого себя, parent_id=%s, post_id=%d',
                     parent_id, post.id
                 )
-        except (ValueError, IntegrityError) as e:
+        except IntegrityError as e:
             await self._db_session.rollback()
             self._logger.info(e)
-            raise InvalidPostId
+        except ValueError as e:
+            await self._db_session.commit()
+            self._logger.info(e)
         else:
             await self._db_session.commit()
             return post
+        raise InvalidPostId
 
     async def get_all_posts(self, limit: int, offset: int) -> list[PostWithUser]:
         """
@@ -119,12 +110,9 @@ class PostRepository(BaseRepository):
         )).scalar()
 
     async def update_post(self, post_id: int, owner_id: int, **values) -> PostInDB:
-        values['updated_at'] = func.now()
+        values['updated_at'] = datetime.now()
         cursor = await self._db_session.execute(
-            update(Post).values(**values).filter(
-                Post.id == post_id,
-                Post.owner_id == owner_id,
-            ).returning(Post)
+            update(Post).values(**values).filter(Post.id == post_id, Post.owner_id == owner_id).returning(Post)
         )
         await self._db_session.commit()
         return PostInDB.parse_obj(cursor.mappings().one())
