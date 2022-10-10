@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, root_validator, validator
+from pydantic import BaseModel, root_validator
 
 
 class CreatePost(BaseModel):
@@ -53,10 +53,6 @@ class PostWithUser(BaseModel):
         if 'owner' not in values:
             values['owner'] = User(id=values['user_id'], username=values['username'])
         return values
-
-    @validator('comments_count', pre=True)
-    def set_not_null_comments_count(cls, value: int | None):
-        return value or 0
 
 
 class PostComment(BaseModel):

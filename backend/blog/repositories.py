@@ -20,6 +20,11 @@ class InvalidPostId(Exception):
 class PostRepository(BaseRepository):
 
     async def create_post(self, owner_id: int, text: str, parent_id: int | None = None) -> PostInDB:
+        """
+        INSERT INTO posts p (owner_id, text, parent_id)
+        VALUES (%(owner_id)s, %(text)s, %(parent_id)s)
+        RETURNING p.created_at, p.updated_at, p.id, p.owner_id, p.text, p.parent_id
+        """
         try:
             post = PostInDB.parse_obj((await self._db_session.execute(
                 insert(Post).values(owner_id=owner_id, text=text, parent_id=parent_id).returning(Post)
@@ -45,11 +50,10 @@ class PostRepository(BaseRepository):
             WHERE p1.parent_id IS NULL
             UNION ALL
             SELECT t.id, t."text", t.owner_id, t.created_at, p2.id, cntr + 1
-            FROM t
-            JOIN posts p2 ON p2.parent_id = t.child_id
+            FROM t JOIN posts p2 ON p2.parent_id = t.child_id
         )
         SELECT t.id, t."text", t.created_at, count(*), u.id "user_id", u.username
-        FROM t LEFT JOIN users u ON u.id = t.owner_id
+        FROM t JOIN users u ON u.id = t.owner_id
         WHERE cntr != 0
         GROUP BY t.id, t."text", t.created_at, u.id, u.username
         """
@@ -106,6 +110,11 @@ class PostRepository(BaseRepository):
         )).scalar()
 
     async def update_post(self, post_id: int, owner_id: int, **values) -> PostInDB:
+        """
+        UPDATE posts p SET updated_at=:updated_at, ...
+        WHERE p.id = :id_1 AND p.owner_id = :owner_id_1
+        RETURNING p.created_at, p.updated_at, p.id, p.owner_id, p.text, p.parent_id
+        """
         values['updated_at'] = datetime.now()
         cursor = await self._db_session.execute(
             update(Post).values(**values).filter(Post.id == post_id, Post.owner_id == owner_id).returning(Post)
@@ -114,14 +123,11 @@ class PostRepository(BaseRepository):
         return PostInDB.parse_obj(cursor.mappings().one())
 
     async def get_post_or_comment_in_db(self, post_id) -> PostInDB | None:
+        """
+        SELECT * FROM posts p WHERE p.id = :id_1
+        """
         if post := (await self._db_session.execute(
             select(Post).filter(Post.id == post_id)
-        )).scalar_one_or_none():
-            return PostInDB.from_orm(post)
-
-    async def get_post_in_db(self, post_id) -> PostInDB | None:
-        if post := (await self._db_session.execute(
-            select(Post).filter(Post.id == post_id, Post.parent_id.is_(None))
         )).scalar_one_or_none():
             return PostInDB.from_orm(post)
 
@@ -142,7 +148,7 @@ class PostRepository(BaseRepository):
                 FROM posts t JOIN cte ON cte.id = t.parent_id
         )
         SELECT cte.created_at, cte.id, cte.parent_id, cte."text", u.id "user_id", u.username
-        FROM cte LEFT JOIN users u ON u.id = cte.owner_id
+        FROM cte JOIN users u ON u.id = cte.owner_id
         ORDER_BY cte.created_at DESC
         """
 

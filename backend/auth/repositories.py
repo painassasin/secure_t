@@ -15,6 +15,11 @@ class UserAlreadyExists(Exception):
 class UserRepository(BaseRepository):
 
     async def create_user(self, username: str, hashed_password: str) -> UserInDB:
+        """
+        INSERT INTO users u (username, password)
+        VALUES (%(username)s, %(password)s)
+        RETURNING u.created_at, u.updated_at, u.id, u.username, u.password
+        """
         stmt = insert(User).values(username=username, password=hashed_password).returning(User)
 
         try:
@@ -28,6 +33,11 @@ class UserRepository(BaseRepository):
             return UserInDB.parse_obj(cursor.mappings().one())
 
     async def get_user_by_username(self, username: str) -> UserInDB | None:
+        """
+        SELECT u.created_at, u.updated_at, u.id, u.username, u.password
+        FROM users u
+        WHERE u.username = :username_1
+        """
         if user := (await self._db_session.execute(
             select(User).filter_by(username=username)
         )).scalar_one_or_none():
