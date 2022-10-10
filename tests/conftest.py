@@ -16,12 +16,10 @@ from backend.app import app
 from backend.auth.models import User
 from backend.auth.schemas import TokenData, UserInDB
 from backend.auth.utils import get_access_token, get_password_hash
-from backend.core.config import AppSettings
+from backend.core import settings
 from backend.core.database import TimestampMixin
 from backend.models import Base
 
-
-settings = AppSettings()
 
 T = TypeVar('T', bound=Base)
 

@@ -1,9 +1,7 @@
+from backend.blog.exceptions import PostNotFound
 from backend.blog.repositories import InvalidPostId, PostRepository
 from backend.blog.schemas import Comment, Post, PostWithUser, UpdatePost
-
-
-class PostNotFound(Exception):
-    ...
+from backend.core.exceptions import Forbidden
 
 
 class NotOwner(Exception):
@@ -42,6 +40,15 @@ class BlogService:
             raise PostNotFound
 
         if post.owner_id != user_id:
-            raise NotOwner
+            raise Forbidden('Only owner have to update post')
 
         return await self._post_repository.update_post(post_id=post_id, owner_id=user_id, **data.dict())
+
+    async def delete_post(self, post_id: int, user_id: int):
+        if not (post := await self._post_repository.get_post_or_comment_in_db(post_id=post_id)):
+            raise PostNotFound
+
+        if post.owner_id != user_id:
+            raise Forbidden('Only owner have to delete post')
+
+        await self._post_repository.delete_post(post_id)

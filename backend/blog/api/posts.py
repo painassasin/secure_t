@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from starlette import status
 
 from backend.auth.schemas import User
 from backend.auth.utils import auth_required
+from backend.blog.exceptions import PostNotFound
 from backend.blog.repositories import PostRepository
 from backend.blog.schemas import CreatePost, Post, PostWithComments, PostWithUser, UpdatePost
-from backend.blog.services import BlogService, NotOwner, PostNotFound
+from backend.blog.services import BlogService
 from backend.core.pagination import Page, paginate
 
 
@@ -37,7 +38,7 @@ async def get_single_post(
     post_repository: PostRepository = Depends(),
 ):
     if not (post := await post_repository.get_single_post(post_id=post_id)):
-        raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
+        raise PostNotFound
     return post
 
 
@@ -48,12 +49,7 @@ async def update_post(
     user: User = Depends(auth_required),
     blog_service: BlogService = Depends(),
 ):
-    try:
-        return await blog_service.update_post(post_id=post_id, user_id=user.id, data=data)
-    except PostNotFound:
-        raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
-    except NotOwner:
-        raise HTTPException(detail='Only owner have to update post', status_code=status.HTTP_403_FORBIDDEN)
+    return await blog_service.update_post(post_id=post_id, user_id=user.id, data=data)
 
 
 @router.delete('/{post_id}/', status_code=status.HTTP_204_NO_CONTENT)
@@ -61,11 +57,6 @@ async def delete_post(
     post_id: int,
     user: User = Depends(auth_required),
     post_repository: PostRepository = Depends(),
+    blog_service: BlogService = Depends(),
 ):
-    if not (post := await post_repository.get_post_or_comment_in_db(post_id=post_id)):
-        raise HTTPException(detail='Post not found', status_code=status.HTTP_404_NOT_FOUND)
-
-    if post.owner_id != user.id:
-        raise HTTPException(detail='Only owner have to delete post', status_code=status.HTTP_403_FORBIDDEN)
-
-    await post_repository.delete_post(post_id)
+    await blog_service.delete_post(post_id=post_id, user_id=user.id)

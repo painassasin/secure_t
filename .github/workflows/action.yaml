@@ -40,7 +40,7 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
         run: |
-          poetry run sh -c "pytest"
+          poetry run sh -c "pytest --cov=backend tests/"
 
   build:
     if: startsWith(github.event.ref, 'refs/tags/v')

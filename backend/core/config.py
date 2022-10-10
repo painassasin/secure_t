@@ -37,3 +37,6 @@ class AppSettings(BaseSettings):
     class Config:
         env_file_encoding = 'utf-8'
         env_file = BASE_DIR.joinpath('.env')
+
+
+settings = AppSettings()

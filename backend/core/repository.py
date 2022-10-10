@@ -13,4 +13,4 @@ class BaseRepository:
     def _db_session(self) -> AsyncSession:
         if _session := SESSION.get():
             return _session
-        raise RuntimeError
+        raise RuntimeError  # pragma: no cover

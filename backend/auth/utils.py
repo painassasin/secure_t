@@ -11,7 +11,7 @@ from starlette import status
 
 from backend.auth.repositories import UserRepository
 from backend.auth.schemas import TokenData, User
-from backend.core.config import AppSettings
+from backend.core import settings
 from backend.core.context_vars import USER
 
 
@@ -19,7 +19,6 @@ pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/signin/form/')
 
 logger = logging.getLogger(__name__)
-settings = AppSettings()
 
 
 def get_access_token(token_data: TokenData) -> str:

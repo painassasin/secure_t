@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from starlette import status
 
 from backend.auth.schemas import User
 from backend.auth.utils import auth_required
 from backend.blog.schemas import Comment, CreateComment
 from backend.blog.services import BlogService
+from backend.core.exceptions import BadRequest
 
 
 router = APIRouter(prefix='/comments', tags=['Blog'])
@@ -21,5 +22,5 @@ async def create_comment(
         text=data.text,
         parent_id=data.parent_id,
     )):
-        raise HTTPException(detail='Invalid parentId', status_code=status.HTTP_400_BAD_REQUEST)
+        raise BadRequest('Invalid parentId')
     return comment
