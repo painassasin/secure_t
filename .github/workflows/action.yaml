@@ -40,7 +40,11 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
         run: |
-          poetry run sh -c "pytest --cov=backend tests/"
+          poetry run sh -c "pytest --cov=backend tests/ --cov-report=term-missing -v"
+          poetry run sh -c "coverage report"
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v1
+
 
   build:
     if: startsWith(github.event.ref, 'refs/tags/v')
