@@ -105,11 +105,11 @@ class PostRepository(BaseRepository):
 
     async def update_post(self, post_id: int, owner_id: int, **values) -> PostInDB:
         """
-        UPDATE posts p SET updated_at=:updated_at, ...
+        UPDATE posts p SET updated_at=now(), ...
         WHERE p.id = :id_1 AND p.owner_id = :owner_id_1
         RETURNING p.created_at, p.updated_at, p.id, p.owner_id, p.text, p.parent_id
         """
-        values['updated_at'] = datetime.now()
+        values['updated_at'] = datetime.utcnow()
         cursor = await self._db_session.execute(
             update(Post).values(**values).filter(Post.id == post_id, Post.owner_id == owner_id).returning(Post)
         )

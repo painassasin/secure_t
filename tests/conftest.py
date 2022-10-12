@@ -111,7 +111,7 @@ async def async_client(app) -> AsyncClient:
 def create_obj_in_db(async_session: AsyncSession):
     async def _create_obj_in_db(obj: T) -> T:
         if isinstance(obj, TimestampMixin):
-            now = datetime.now()
+            now = datetime.utcnow()
             obj.created_at = now
             obj.updated_at = now
         async_session.add(obj)
