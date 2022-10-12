@@ -3,9 +3,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 
-from backend.auth.models import User
 from backend.auth.schemas import UserInDB
 from backend.core.repository import BaseRepository
+from backend.models import User
 
 
 class UsernameAlreadyExists(Exception):

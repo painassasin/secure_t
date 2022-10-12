@@ -2,8 +2,8 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.blog.models import Post
 from backend.blog.schemas import PostInDB
+from backend.models import Post
 
 
 @pytest.mark.asyncio

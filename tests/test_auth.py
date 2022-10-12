@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import select
 
-from backend.auth.models import User
+from backend.models import User
 
 
 @pytest.mark.asyncio

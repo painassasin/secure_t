@@ -13,12 +13,11 @@ from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 from backend.app import create_app
-from backend.auth.models import User
 from backend.auth.schemas import UserInDB
 from backend.core import settings
 from backend.core.database import TimestampMixin
 from backend.core.security import create_access_token, get_password_hash
-from backend.models import Base
+from backend.models import Base, User
 
 
 T = TypeVar('T', bound=Base)

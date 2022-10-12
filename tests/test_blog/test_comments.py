@@ -1,7 +1,7 @@
 import pytest
 from sqlalchemy import func, select
 
-from backend.blog.models import Post
+from backend.models import Post
 
 
 @pytest.mark.asyncio

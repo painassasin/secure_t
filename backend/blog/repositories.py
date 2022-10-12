@@ -7,10 +7,9 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.selectable import CTE
 
-from backend.auth.models import User
-from backend.blog.models import Post
 from backend.blog.schemas import PostInDB, PostWithComments, PostWithUser
 from backend.core.repository import BaseRepository
+from backend.models import Post, User
 
 
 class InvalidPostId(Exception):

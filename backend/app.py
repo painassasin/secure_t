@@ -20,7 +20,7 @@ async def health_check():
 
 
 async def base_app_exception_handler(request: Request, exc: BaseAppException):
-    return JSONResponse(status_code=exc.status_code, content={'error': exc.message})
+    return JSONResponse(status_code=exc.status_code, content={'error': exc.message}, headers=exc.headers)
 
 
 def create_app() -> FastAPI:

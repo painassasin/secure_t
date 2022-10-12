@@ -3,12 +3,12 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum, unique
 
 import jwt
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jwt import PyJWTError
 from passlib.context import CryptContext
-from starlette import status
 
+from backend.auth.exceptions import InvalidCredentials
 from backend.auth.repositories import UserRepository
 from backend.auth.schemas import User
 from backend.core import settings
@@ -34,13 +34,16 @@ def get_password_hash(password: str) -> str:
 
 def _create_token(token_type: TokenType, lifetime: timedelta, sub: str) -> str:
     now = datetime.now(tz=timezone.utc)
-    payload = {
-        'type': token_type.value,
-        'exp': now + lifetime,
-        'iat': now,
-        'sub': sub
-    }
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT.ALGORITHM)
+    return jwt.encode(
+        payload={
+            'type': token_type.value,
+            'exp': now + lifetime,
+            'iat': now,
+            'sub': sub
+        },
+        key=settings.SECRET_KEY,
+        algorithm=settings.JWT.ALGORITHM
+    )
 
 
 def create_access_token(*, username: str) -> str:
@@ -67,8 +70,4 @@ async def get_current_user(
                 logger.debug('User %s not found', username)
         else:
             logger.warning('Invalid payload: %s', payload)
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail='Could not validate credentials',
-        headers={'WWW-Authenticate': 'Bearer'},
-    )
+    raise InvalidCredentials
