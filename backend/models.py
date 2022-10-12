@@ -18,6 +18,9 @@ class User(TimestampMixin, Base):
 
 class Post(TimestampMixin, Base):
     __tablename__ = 'posts'
+    __table_args__ = (
+        sa.CheckConstraint('id <> parent_id', name='ck_parent_id_does_not_refer_itself'),
+    )
 
     id = sa.Column(sa.Integer, primary_key=True)
     owner_id = sa.Column(sa.Integer, sa.ForeignKey('users.id', ondelete='RESTRICT'), nullable=False)
