@@ -2,21 +2,21 @@ from fastapi import APIRouter, Depends
 from starlette import status
 
 from backend.auth.schemas import User
-from backend.auth.utils import auth_required
 from backend.blog.exceptions import PostNotFound
 from backend.blog.repositories import PostRepository
 from backend.blog.schemas import CreatePost, Post, PostWithComments, PostWithUser, UpdatePost
 from backend.blog.services import BlogService
 from backend.core.pagination import LimitOffsetPagination, Page
+from backend.core.security import get_current_user
 
 
-router = APIRouter(prefix='/posts', tags=['Blog'])
+router = APIRouter()
 
 
 @router.post('/', response_model=Post, status_code=status.HTTP_201_CREATED)
 async def create_post(
     data: CreatePost,
-    user: User = Depends(auth_required),
+    user: User = Depends(get_current_user),
     blog_service: BlogService = Depends(),
 ):
     return await blog_service.create_post(owner_id=user.id, text=data.text)
@@ -45,7 +45,7 @@ async def get_single_post(
 async def update_post(
     post_id: int,
     data: UpdatePost,
-    user: User = Depends(auth_required),
+    user: User = Depends(get_current_user),
     blog_service: BlogService = Depends(),
 ):
     return await blog_service.update_post(post_id=post_id, user_id=user.id, data=data)
@@ -54,7 +54,7 @@ async def update_post(
 @router.delete('/{post_id}/', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_post(
     post_id: int,
-    user: User = Depends(auth_required),
+    user: User = Depends(get_current_user),
     blog_service: BlogService = Depends(),
 ):
     await blog_service.delete_post(post_id=post_id, user_id=user.id)

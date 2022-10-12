@@ -8,7 +8,7 @@ from backend.core import settings
 
 Base = declarative_base()
 
-async_engine = create_async_engine(settings.DATABASE_URI, echo=settings.POSTGRES_DB_ECHO, future=True)
+async_engine = create_async_engine(settings.DB.URI, echo=settings.DB.SQL_ECHO, future=True)
 async_session = sessionmaker(async_engine, expire_on_commit=False, class_=AsyncSession)
 
 

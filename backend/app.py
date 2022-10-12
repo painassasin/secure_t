@@ -4,8 +4,8 @@ from fastapi import FastAPI
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from backend.auth.api import auth_router, users_router
-from backend.blog.api import comments_router, posts_router
+from backend.auth.api import router as auth_router
+from backend.blog.api import router as blog_router
 from backend.core import settings
 from backend.core.exceptions import BaseAppException
 from backend.core.logging.config import log_config
@@ -31,10 +31,7 @@ def create_app() -> FastAPI:
     app.exception_handler(BaseAppException)(base_app_exception_handler)
 
     app.add_api_route('/ping/', health_check, methods=['GET'], include_in_schema=False)
-
     app.include_router(auth_router)
-    app.include_router(users_router)
-    app.include_router(comments_router)
-    app.include_router(posts_router)
+    app.include_router(blog_router)
 
     return app

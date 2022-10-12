@@ -6,7 +6,7 @@ from backend.blog.models import Post
 
 @pytest.mark.asyncio
 class TestCreateComment:
-    url = '/comments/'
+    url = '/blog/comments/'
 
     async def test_auth_required(self, async_client):
         response = await async_client.post(self.url.format(post_id=1), json={'text': 'new_comment'})
