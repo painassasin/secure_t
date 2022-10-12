@@ -1,6 +1,4 @@
 from starlette import status
-from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 
 class BaseAppException(Exception):
@@ -18,7 +16,3 @@ class BadRequest(BaseAppException):
 
 class Forbidden(BaseAppException):
     status_code: int = status.HTTP_403_FORBIDDEN
-
-
-async def base_app_exception_handler(request: Request, exc: BaseAppException):
-    return JSONResponse(status_code=exc.status_code, content={'error': exc.message})

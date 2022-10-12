@@ -12,7 +12,7 @@ from pydantic import PostgresDsn
 from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-from backend.app import app
+from backend.app import create_app
 from backend.auth.models import User
 from backend.auth.schemas import TokenData, UserInDB
 from backend.auth.utils import get_access_token, get_password_hash
@@ -29,6 +29,11 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture(scope='session')
+def app():
+    return create_app()
 
 
 @pytest.fixture(scope='session')
@@ -98,7 +103,7 @@ def mock_session_middleware(async_session):
 
 
 @pytest_asyncio.fixture
-async def async_client() -> AsyncClient:
+async def async_client(app) -> AsyncClient:
     async with AsyncClient(app=app, base_url='http://0.0.0.0') as ac:
         yield ac
 
