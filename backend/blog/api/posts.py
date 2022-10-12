@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from starlette import status
 
 from backend.auth.schemas import User
@@ -7,7 +7,7 @@ from backend.blog.exceptions import PostNotFound
 from backend.blog.repositories import PostRepository
 from backend.blog.schemas import CreatePost, Post, PostWithComments, PostWithUser, UpdatePost
 from backend.blog.services import BlogService
-from backend.core.pagination import Page, paginate
+from backend.core.pagination import LimitOffsetPagination, Page
 
 
 router = APIRouter(prefix='/posts', tags=['Blog'])
@@ -24,12 +24,11 @@ async def create_post(
 
 @router.get('/', response_model=Page[PostWithUser])
 async def get_all_posts(
-    limit: int = Query(10, ge=1),
-    offset: int = Query(0, ge=0),
+    pagination: LimitOffsetPagination = Depends(),
     blog_service: BlogService = Depends(),
 ):
-    total, items = await blog_service.get_all_posts(limit, offset)
-    return paginate(items, limit, offset, total)
+    total, items = await blog_service.get_all_posts(pagination.limit, pagination.offset)
+    return pagination.paginate(items, total)
 
 
 @router.get('/{post_id}/', response_model=PostWithComments)
@@ -56,7 +55,6 @@ async def update_post(
 async def delete_post(
     post_id: int,
     user: User = Depends(auth_required),
-    post_repository: PostRepository = Depends(),
     blog_service: BlogService = Depends(),
 ):
     await blog_service.delete_post(post_id=post_id, user_id=user.id)
