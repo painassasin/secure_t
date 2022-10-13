@@ -1,26 +1,28 @@
-from backend.auth.exceptions import InvalidCredentials
-from backend.auth.repositories import UserAlreadyExists, UserRepository
-from backend.auth.schemas import OAuth2PasswordRequestBody, TokenData, UserInDB
-from backend.auth.utils import get_access_token, get_password_hash, verify_password
+from fastapi.security import OAuth2PasswordRequestForm
+
+from backend.auth.exceptions import InvalidCredentials, UserAlreadyExists
+from backend.auth.repositories import UsernameAlreadyExists, UserRepository
+from backend.auth.schemas import UserCreate, UserInDB
+from backend.core.security import get_password_hash, verify_password
 
 
 class AuthService:
+    def __init__(self):
+        self.user_repository = UserRepository()
 
-    def __init__(self) -> None:
-        self._user_repository: UserRepository = UserRepository()
-
-    async def create_user(self, data: OAuth2PasswordRequestBody) -> UserInDB | None:
-        hashed_password: str = get_password_hash(data.password)
+    async def create_user(self, user_in: UserCreate) -> UserInDB:
+        hashed_password: str = get_password_hash(user_in.password)
         try:
-            return await self._user_repository.create_user(
-                username=data.username,
+            return await self.user_repository.create_user(
+                username=user_in.username,
                 hashed_password=hashed_password
             )
-        except UserAlreadyExists:
-            return None
+        except UsernameAlreadyExists:
+            raise UserAlreadyExists
 
-    async def signin_user(self, username: str, password: str) -> str:
-        user = await self._user_repository.get_user_by_username(username)
-        if not user or not verify_password(password, user.password):
+    async def authenticate(self, form_data: OAuth2PasswordRequestForm) -> UserInDB:
+        if not (user := await self.user_repository.get_user_by_username(username=form_data.username)):
             raise InvalidCredentials
-        return get_access_token(token_data=TokenData.parse_obj(user))
+        if not verify_password(form_data.password, user.password):
+            raise InvalidCredentials
+        return user

@@ -1,42 +1,35 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from starlette import status
 
 from backend.auth.schemas import User
-from backend.auth.utils import auth_required
 from backend.blog.exceptions import PostNotFound
-from backend.blog.repositories import PostRepository
 from backend.blog.schemas import CreatePost, Post, PostWithComments, PostWithUser, UpdatePost
-from backend.blog.services import BlogService
-from backend.core.pagination import Page, paginate
+from backend.core.container import blog_service, post_repository
+from backend.core.pagination import LimitOffsetPagination, Page
+from backend.core.security import get_current_user
 
 
-router = APIRouter(prefix='/posts', tags=['Blog'])
+router = APIRouter()
 
 
 @router.post('/', response_model=Post, status_code=status.HTTP_201_CREATED)
 async def create_post(
     data: CreatePost,
-    user: User = Depends(auth_required),
-    blog_service: BlogService = Depends(),
+    user: User = Depends(get_current_user),
 ):
     return await blog_service.create_post(owner_id=user.id, text=data.text)
 
 
 @router.get('/', response_model=Page[PostWithUser])
 async def get_all_posts(
-    limit: int = Query(10, ge=1),
-    offset: int = Query(0, ge=0),
-    blog_service: BlogService = Depends(),
+    pagination: LimitOffsetPagination = Depends(),
 ):
-    total, items = await blog_service.get_all_posts(limit, offset)
-    return paginate(items, limit, offset, total)
+    total, items = await blog_service.get_all_posts(pagination.limit, pagination.offset)
+    return pagination.paginate(items, total)
 
 
 @router.get('/{post_id}/', response_model=PostWithComments)
-async def get_single_post(
-    post_id: int,
-    post_repository: PostRepository = Depends(),
-):
+async def get_single_post(post_id: int):
     if not (post := await post_repository.get_single_post(post_id=post_id)):
         raise PostNotFound
     return post
@@ -46,8 +39,7 @@ async def get_single_post(
 async def update_post(
     post_id: int,
     data: UpdatePost,
-    user: User = Depends(auth_required),
-    blog_service: BlogService = Depends(),
+    user: User = Depends(get_current_user),
 ):
     return await blog_service.update_post(post_id=post_id, user_id=user.id, data=data)
 
@@ -55,8 +47,6 @@ async def update_post(
 @router.delete('/{post_id}/', status_code=status.HTTP_204_NO_CONTENT)
 async def delete_post(
     post_id: int,
-    user: User = Depends(auth_required),
-    post_repository: PostRepository = Depends(),
-    blog_service: BlogService = Depends(),
+    user: User = Depends(get_current_user),
 ):
     await blog_service.delete_post(post_id=post_id, user_id=user.id)

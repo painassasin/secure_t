@@ -1,3 +1,6 @@
+from backend.core import settings
+
+
 log_config = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -23,7 +26,7 @@ log_config = {
     'loggers': {
         'backend': {
             'handlers': ['console'],
-            'level': 'DEBUG'
+            'level': 'DEBUG' if settings.DEBUG else 'INFO'
         },
         'uvicorn.access': {
             'handlers': ['console'],

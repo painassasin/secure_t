@@ -3,12 +3,12 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 
-from backend.auth.models import User
 from backend.auth.schemas import UserInDB
 from backend.core.repository import BaseRepository
+from backend.models import User
 
 
-class UserAlreadyExists(Exception):
+class UsernameAlreadyExists(Exception):
     ...
 
 
@@ -27,8 +27,8 @@ class UserRepository(BaseRepository):
             await self._db_session.commit()
         except IntegrityError:
             await self._db_session.rollback()
-            self._logger.info('User already exists')
-            raise UserAlreadyExists
+            self._logger.info('User %s already exists', username)
+            raise UsernameAlreadyExists
         else:
             return UserInDB.parse_obj(cursor.mappings().one())
 

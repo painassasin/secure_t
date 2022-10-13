@@ -1,7 +1,7 @@
 import pytest
 
-from backend.blog.models import Post
 from backend.blog.schemas import PostInDB
+from backend.models import Post
 
 
 @pytest.fixture

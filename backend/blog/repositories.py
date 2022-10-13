@@ -7,10 +7,9 @@ from sqlalchemy.orm import aliased
 from sqlalchemy.sql import Select
 from sqlalchemy.sql.selectable import CTE
 
-from backend.auth.models import User
-from backend.blog.models import Post
 from backend.blog.schemas import PostInDB, PostWithComments, PostWithUser
 from backend.core.repository import BaseRepository
+from backend.models import Post, User
 
 
 class InvalidPostId(Exception):
@@ -29,17 +28,12 @@ class PostRepository(BaseRepository):
             post = PostInDB.parse_obj((await self._db_session.execute(
                 insert(Post).values(owner_id=owner_id, text=text, parent_id=parent_id).returning(Post)
             )).mappings().one())
-            if post.id == parent_id:
-                raise ValueError(
-                    'Пост не может ссылаться на самого себя, parent_id=%s, post_id=%d',
-                    parent_id, post.id
-                )
-        except (IntegrityError, ValueError) as e:
+            await self._db_session.commit()
+        except IntegrityError as e:
             await self._db_session.rollback()
             self._logger.info(e)
             raise InvalidPostId
         else:
-            await self._db_session.commit()
             return post
 
     async def get_all_posts(self, limit: int, offset: int) -> list[PostWithUser]:
@@ -111,11 +105,11 @@ class PostRepository(BaseRepository):
 
     async def update_post(self, post_id: int, owner_id: int, **values) -> PostInDB:
         """
-        UPDATE posts p SET updated_at=:updated_at, ...
+        UPDATE posts p SET updated_at=now(), ...
         WHERE p.id = :id_1 AND p.owner_id = :owner_id_1
         RETURNING p.created_at, p.updated_at, p.id, p.owner_id, p.text, p.parent_id
         """
-        values['updated_at'] = datetime.now()
+        values['updated_at'] = datetime.utcnow()
         cursor = await self._db_session.execute(
             update(Post).values(**values).filter(Post.id == post_id, Post.owner_id == owner_id).returning(Post)
         )

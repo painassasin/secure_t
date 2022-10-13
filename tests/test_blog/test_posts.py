@@ -2,13 +2,13 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.blog.models import Post
 from backend.blog.schemas import PostInDB
+from backend.models import Post
 
 
 @pytest.mark.asyncio
 class TestCreatePost:
-    url = '/posts/'
+    url = '/blog/posts/'
 
     async def test_auth_required(self, async_client):
         response = await async_client.post(self.url, json={'text': 'new_post'})
@@ -34,7 +34,7 @@ class TestCreatePost:
 
 @pytest.mark.asyncio
 class TestGetAllPosts:
-    url = '/posts/'
+    url = '/blog/posts/'
 
     async def test_without_comments_belongs_current_user(self, create_user, create_post, async_client):
         _, user = await create_user('user', 'password')
@@ -124,7 +124,7 @@ class TestGetAllPosts:
 
 @pytest.mark.asyncio
 class TestGetPostDescription:
-    url = '/posts/{post_id}/'
+    url = '/blog/posts/{post_id}/'
 
     async def test_post_without_comments(self, create_user, create_post, async_client):
         _, user = await create_user('user', 'password')
@@ -222,7 +222,7 @@ class TestGetPostDescription:
 
 @pytest.mark.asyncio
 class TestUpdatePost:
-    url = '/posts/{post_id}/'
+    url = '/blog/posts/{post_id}/'
 
     async def test_not_owner(self, create_user, create_post, async_client):
         _, user_1 = await create_user('user_1', 'password')
@@ -273,7 +273,7 @@ class TestUpdatePost:
 
 @pytest.mark.asyncio
 class TestDeletePost:
-    url = '/posts/{post_id}/'
+    url = '/blog/posts/{post_id}/'
 
     async def test_post_not_found(self, create_user, async_client, async_session):
         token, user = await create_user('user', 'password')

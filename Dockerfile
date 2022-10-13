@@ -14,7 +14,7 @@ RUN pip install "poetry==$POETRY_VERSION"
 
 COPY poetry.lock pyproject.toml ./
 RUN  poetry config virtualenvs.create false \
-     && poetry install --no-root --no-dev --no-interaction --no-ansi
+     && poetry install --no-root --no-dev --no-ansi --no-interaction
 
 COPY . .
 
@@ -24,4 +24,4 @@ EXPOSE 8000
 
 ENTRYPOINT ["bash", "entrypoint.sh"]
 
-CMD ["uvicorn", "backend.app:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.app:create_app", "--factory","--reload", "--host", "0.0.0.0", "--port", "8000"]

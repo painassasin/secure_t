@@ -10,15 +10,14 @@ from asyncpg import Connection
 from httpx import AsyncClient
 from pydantic import PostgresDsn
 from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
-from backend.app import app
-from backend.auth.models import User
-from backend.auth.schemas import TokenData, UserInDB
-from backend.auth.utils import get_access_token, get_password_hash
+from backend.app import create_app
+from backend.auth.schemas import UserInDB
 from backend.core import settings
 from backend.core.database import TimestampMixin
-from backend.models import Base
+from backend.core.security import create_access_token, get_password_hash
+from backend.models import Base, User
 
 
 T = TypeVar('T', bound=Base)
@@ -32,21 +31,26 @@ def event_loop():
 
 
 @pytest.fixture(scope='session')
+def app():
+    return create_app()
+
+
+@pytest.fixture(scope='session')
 def database_url() -> str:
     return PostgresDsn.build(
         scheme='postgresql+asyncpg',
-        user=settings.POSTGRES_USER,
-        password=settings.POSTGRES_PASSWORD,
-        host=settings.POSTGRES_HOST,
-        path=f'/{settings.TEST_POSTGRES_DB}',
+        user=settings.DB.USER,
+        password=settings.DB.PASSWORD,
+        host=settings.DB.HOST,
+        path=f'/{settings.DB.DB_TEST}',
     )
 
 
-@pytest_asyncio.fixture(scope='session')
-async def test_engine(database_url):
+@pytest.fixture(scope='session')
+def test_engine(database_url) -> AsyncEngine:
     engine = create_async_engine(database_url, echo=True)
     yield engine
-    await engine.dispose()
+    engine.sync_engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -72,13 +76,13 @@ async def async_session(test_engine):
 @pytest_asyncio.fixture(scope='session', autouse=True)
 async def make_migrations(test_engine):
     sync_conn: Connection = await asyncpg.connect(
-        host=settings.DATABASE_URI.host,
-        user=settings.DATABASE_URI.user,
-        password=settings.DATABASE_URI.password,
-        database=settings.DATABASE_URI.path.lstrip('/'),
+        host=settings.DB.URI.host,
+        user=settings.DB.URI.user,
+        password=settings.DB.URI.password,
+        database=settings.DB.URI.path.lstrip('/'),
     )
-    await sync_conn.execute(f'DROP DATABASE IF EXISTS {settings.TEST_POSTGRES_DB}')
-    await sync_conn.execute(f'CREATE DATABASE {settings.TEST_POSTGRES_DB}')
+    await sync_conn.execute(f'DROP DATABASE IF EXISTS {settings.DB.DB_TEST}')
+    await sync_conn.execute(f'CREATE DATABASE {settings.DB.DB_TEST}')
     await sync_conn.close()
 
     async with test_engine.begin() as conn:
@@ -98,16 +102,18 @@ def mock_session_middleware(async_session):
 
 
 @pytest_asyncio.fixture
-async def async_client() -> AsyncClient:
+async def async_client(app) -> AsyncClient:
     async with AsyncClient(app=app, base_url='http://0.0.0.0') as ac:
         yield ac
 
 
-@pytest.fixture()
+@pytest.fixture
 def create_obj_in_db(async_session: AsyncSession):
     async def _create_obj_in_db(obj: T) -> T:
         if isinstance(obj, TimestampMixin):
-            now = datetime.now()
+            # TODO: Без этого костыля не работает, нужно разобраться почему
+            #       сущности создаются с одинаковым created_at в одном тесте
+            now = datetime.utcnow()
             obj.created_at = now
             obj.updated_at = now
         async_session.add(obj)
@@ -124,7 +130,7 @@ def create_user(create_obj_in_db):
         user = UserInDB.from_orm(await create_obj_in_db(
             obj=User(username=username, password=get_password_hash(password))
         ))
-        access_token: str = get_access_token(token_data=TokenData.parse_obj(user))
+        access_token: str = create_access_token(username=user.username)
         return f'Bearer {access_token}', user
 
     return _create_user

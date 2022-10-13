@@ -1,5 +1,6 @@
 from typing import Generic, Sequence, TypeVar
 
+from fastapi import Query
 from pydantic.generics import GenericModel
 
 
@@ -13,10 +14,15 @@ class Page(GenericModel, Generic[T]):
     items: Sequence[T]
 
 
-def paginate(items: Sequence[T], limit: int, offset: int, total: int) -> Page[T]:
-    return Page(
-        limit=limit,
-        offset=offset,
-        total=total,
-        items=items
-    )
+class LimitOffsetPagination:
+    def __init__(self, limit: int = Query(10, ge=1), offset: int = Query(0, ge=0)):
+        self.limit = limit
+        self.offset = offset
+
+    def paginate(self, items: Sequence[T], total: int) -> Page[T]:
+        return Page(
+            limit=self.limit,
+            offset=self.offset,
+            total=total,
+            items=items
+        )
