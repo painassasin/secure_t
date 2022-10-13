@@ -17,6 +17,7 @@ from backend.core import settings
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated='auto')
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/signin/')
 logger = logging.getLogger(__name__)
+user_repository = UserRepository()
 
 
 @unique
@@ -54,10 +55,7 @@ def create_access_token(*, username: str) -> str:
     )
 
 
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    user_repository: UserRepository = Depends(),
-) -> User:
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     try:
         payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=[settings.JWT.ALGORITHM])
     except PyJWTError as e:

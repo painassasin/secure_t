@@ -3,9 +3,8 @@ from starlette import status
 
 from backend.auth.schemas import User
 from backend.blog.exceptions import PostNotFound
-from backend.blog.repositories import PostRepository
 from backend.blog.schemas import CreatePost, Post, PostWithComments, PostWithUser, UpdatePost
-from backend.blog.services import BlogService
+from backend.core.container import blog_service, post_repository
 from backend.core.pagination import LimitOffsetPagination, Page
 from backend.core.security import get_current_user
 
@@ -17,7 +16,6 @@ router = APIRouter()
 async def create_post(
     data: CreatePost,
     user: User = Depends(get_current_user),
-    blog_service: BlogService = Depends(),
 ):
     return await blog_service.create_post(owner_id=user.id, text=data.text)
 
@@ -25,17 +23,13 @@ async def create_post(
 @router.get('/', response_model=Page[PostWithUser])
 async def get_all_posts(
     pagination: LimitOffsetPagination = Depends(),
-    blog_service: BlogService = Depends(),
 ):
     total, items = await blog_service.get_all_posts(pagination.limit, pagination.offset)
     return pagination.paginate(items, total)
 
 
 @router.get('/{post_id}/', response_model=PostWithComments)
-async def get_single_post(
-    post_id: int,
-    post_repository: PostRepository = Depends(),
-):
+async def get_single_post(post_id: int):
     if not (post := await post_repository.get_single_post(post_id=post_id)):
         raise PostNotFound
     return post
@@ -46,7 +40,6 @@ async def update_post(
     post_id: int,
     data: UpdatePost,
     user: User = Depends(get_current_user),
-    blog_service: BlogService = Depends(),
 ):
     return await blog_service.update_post(post_id=post_id, user_id=user.id, data=data)
 
@@ -55,6 +48,5 @@ async def update_post(
 async def delete_post(
     post_id: int,
     user: User = Depends(get_current_user),
-    blog_service: BlogService = Depends(),
 ):
     await blog_service.delete_post(post_id=post_id, user_id=user.id)

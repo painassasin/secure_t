@@ -10,7 +10,7 @@ from asyncpg import Connection
 from httpx import AsyncClient
 from pydantic import PostgresDsn
 from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 
 from backend.app import create_app
 from backend.auth.schemas import UserInDB
@@ -46,11 +46,11 @@ def database_url() -> str:
     )
 
 
-@pytest_asyncio.fixture(scope='session')
-async def test_engine(database_url):
+@pytest.fixture(scope='session')
+def test_engine(database_url) -> AsyncEngine:
     engine = create_async_engine(database_url, echo=True)
     yield engine
-    await engine.dispose()
+    engine.sync_engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -107,10 +107,12 @@ async def async_client(app) -> AsyncClient:
         yield ac
 
 
-@pytest.fixture()
+@pytest.fixture
 def create_obj_in_db(async_session: AsyncSession):
     async def _create_obj_in_db(obj: T) -> T:
         if isinstance(obj, TimestampMixin):
+            # TODO: Без этого костыля не работает, нужно разобраться почему
+            #       сущности создаются с одинаковым created_at в одном тесте
             now = datetime.utcnow()
             obj.created_at = now
             obj.updated_at = now
