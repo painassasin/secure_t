@@ -7,9 +7,8 @@
 
 ## Описание
 ### Пользователи
-По пользователям ничего интересного - две ручки /auth/signup/, /auth/signin/
+По пользователям ничего интересного - две ручки /auth/signup/, /auth/signin/, причем последняя лжидает форму, а не json.
 которые возвращают access_token. Схема аутентификации bearer.
-Пришлось написать еще одну ручку /auth/signin/form/, чтобы через swagger регистрация проходила
 
 ### По постам и комментариям
 Раз функциональность у постов и комментариев одна и та же,
@@ -44,7 +43,7 @@ alembic upgrade head
 uvicorn backend.app:app --reload
 ```
 либо в контейнере
-```
+```shell
 docker-compose build
 docker-compose up -d db api
 ```
