@@ -126,6 +126,11 @@ class TestGetAllPosts:
 class TestGetPostDescription:
     url = '/blog/posts/{post_id}/'
 
+    async def test_post_not_found(self, async_client):
+        response = await async_client.get(self.url.format(post_id=1))
+        assert response.status_code == 404
+        assert response.json() == {'error': 'Post not found'}
+
     async def test_post_without_comments(self, create_user, create_post, async_client):
         _, user = await create_user('user', 'password')
 

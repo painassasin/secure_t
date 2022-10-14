@@ -24,7 +24,7 @@ class TestCreateComment:
         )
         assert response.status_code == 400
 
-    @pytest.mark.parametrize('increase', [1, 2])
+    @pytest.mark.parametrize('increase', [1, 2], ids=['ck_constraint', 'invalid_id'])
     async def test_invalid_parent_id(self, async_client, create_post, create_user, increase, async_session):
         token, user = await create_user('user', 'password')
         post = await create_post('post', owner_id=user.id)
@@ -37,6 +37,7 @@ class TestCreateComment:
             headers={'Authorization': token}
         )
         assert response.status_code == 400
+        assert response.json() == {'error': 'Invalid parentId'}
 
         assert (await async_session.execute(select(func.count(Post.id)))).scalar() == 1
 

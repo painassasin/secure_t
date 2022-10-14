@@ -101,25 +101,27 @@ class PostRepository(BaseRepository):
             select(func.count()).filter(Post.parent_id.is_(None))
         )).scalar()
 
-    async def update_post(self, post_id: int, owner_id: int, **values) -> PostInDB:
+    async def update_post(self, post_id: int, **values) -> PostInDB:
         """
         UPDATE posts p SET updated_at=now(), ...
-        WHERE p.id = :id_1 AND p.owner_id = :owner_id_1
+        WHERE p.id = :id_1
         RETURNING p.created_at, p.updated_at, p.id, p.owner_id, p.text, p.parent_id
         """
         cursor = await self._db_session.execute(
-            update(Post).values(**values).filter(Post.id == post_id, Post.owner_id == owner_id).returning(Post)
+            update(Post).values(**values).filter(Post.id == post_id).returning(Post)
         )
         await self._db_session.commit()
         return PostInDB.parse_obj(cursor.mappings().one())
 
-    async def get_post_or_comment_in_db(self, post_id) -> PostInDB | None:
+    async def get_post_or_comment_in_db(self, post_id, for_update: bool = False) -> PostInDB | None:
         """
-        SELECT * FROM posts p WHERE p.id = :id_1
+        SELECT * FROM posts p WHERE p.id = :id_1 (FOR UPDATE)
         """
-        if post := (await self._db_session.execute(
-            select(Post).filter(Post.id == post_id)
-        )).scalar_one_or_none():
+        stmt = select(Post).filter(Post.id == post_id)
+        if for_update:
+            stmt = stmt.with_for_update()
+
+        if post := (await self._db_session.execute(stmt)).scalar_one_or_none():
             return PostInDB.from_orm(post)
 
     async def delete_post(self, post_id: int) -> None:
