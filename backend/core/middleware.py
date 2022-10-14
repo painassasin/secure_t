@@ -13,7 +13,7 @@ class SessionMiddleware(BaseHTTPMiddleware):
             SESSION.set(db_session)
             try:
                 return await call_next(request)
-            except DBAPIError:
+            except DBAPIError:  # pragma: no cover
                 await db_session.rollback()
                 raise
             finally:

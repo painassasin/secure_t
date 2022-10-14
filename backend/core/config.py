@@ -25,7 +25,7 @@ class DBConfig(AppBaseConfig):
     @validator('URI', pre=True)
     def build_pg_dsn(cls, v: str | None, values: dict[str, Any]) -> str:
         if isinstance(v, str):
-            return v
+            return v  # pragma: no cover
 
         return PostgresDsn.build(
             scheme='postgresql+asyncpg',
@@ -40,7 +40,7 @@ class DBConfig(AppBaseConfig):
         if not v:
             if db_name := values.get('DB'):
                 return db_name + '_test'
-        return 'test'
+        return 'test'  # pragma: no cover
 
     class Config:
         env_prefix = 'POSTGRES_'

@@ -7,6 +7,7 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jwt import PyJWTError
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 
 from backend.auth.exceptions import InvalidCredentials
 from backend.auth.repositories import UserRepository
@@ -26,7 +27,11 @@ class TokenType(Enum):
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except UnknownHashError as e:
+        logger.warning(e)
+        return False
 
 
 def get_password_hash(password: str) -> str:
@@ -60,12 +65,12 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
         payload = jwt.decode(jwt=token, key=settings.SECRET_KEY, algorithms=[settings.JWT.ALGORITHM])
     except PyJWTError as e:
         logger.debug('Failed to decode token: %s', e)
+        raise InvalidCredentials
     else:
-        if username := payload.get('sub'):
-            if user := await user_repository.get_user_by_username(username=username):
-                return User.parse_obj(user)
-            else:
-                logger.debug('User %s not found', username)
-        else:
+        if not (username := payload.get('sub')):
             logger.warning('Invalid payload: %s', payload)
-    raise InvalidCredentials
+            raise InvalidCredentials
+        if not (user := await user_repository.get_user_by_username(username=username)):
+            logger.debug('User %s not found', username)
+            raise InvalidCredentials
+        return User.parse_obj(user)
