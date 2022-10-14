@@ -266,7 +266,7 @@ class TestUpdatePost:
             'text': 'new_post'
         }
 
-        assert post.updated_at < (await async_session.execute(
+        assert post.updated_at != (await async_session.execute(
             select(Post.updated_at).filter(Post.id == post.id)
         )).scalar_one()
 
