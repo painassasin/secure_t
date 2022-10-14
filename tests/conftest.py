@@ -118,6 +118,7 @@ def create_obj_in_db(async_session: AsyncSession):
         cursor: CursorResult = await async_session.execute(
             insert(obj_class).values(**values).returning(obj_class)
         )
+        await async_session.commit()
         return obj_class(**cursor.mappings().one())
 
     return _create_obj_in_db
