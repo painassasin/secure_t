@@ -1,6 +1,5 @@
 import asyncio
-from datetime import datetime
-from typing import TypeVar
+from typing import Type, TypeVar
 from unittest.mock import AsyncMock, patch
 
 import asyncpg
@@ -10,12 +9,14 @@ from asyncpg import Connection
 from httpx import AsyncClient
 from pydantic import PostgresDsn
 from sqlalchemy import event
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.engine import CursorResult
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, AsyncTransaction, create_async_engine
+from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 
 from backend.app import create_app
 from backend.auth.schemas import UserInDB
 from backend.core import settings
-from backend.core.database import TimestampMixin
 from backend.core.security import create_access_token, get_password_hash
 from backend.models import Base, User
 
@@ -56,21 +57,21 @@ def test_engine(database_url) -> AsyncEngine:
 @pytest_asyncio.fixture
 async def async_session(test_engine):
     async with test_engine.connect() as conn:
-        await conn.begin()
-        await conn.begin_nested()
+        trans: AsyncTransaction = await conn.begin()
 
-        db_session = AsyncSession(bind=conn)
+        async with sessionmaker(
+            bind=conn, expire_on_commit=False, class_=AsyncSession
+        )() as db_session:
+            nested: AsyncTransaction = await conn.begin_nested()
 
-        @event.listens_for(db_session.sync_session, 'after_transaction_end')
-        def end_savepoint(session, transaction):
-            if conn.closed:
-                return
-            if not conn.in_nested_transaction():
-                conn.sync_connection.begin_nested()
+            @event.listens_for(db_session.sync_session, 'after_transaction_end')
+            def end_savepoint(session: Session, transaction: SessionTransaction):
+                if not nested.is_active:
+                    conn.sync_connection.begin_nested()
 
-        yield db_session
-        await db_session.close()
-        await conn.rollback()
+            yield db_session
+
+        await trans.rollback()
 
 
 @pytest_asyncio.fixture(scope='session', autouse=True)
@@ -110,16 +111,15 @@ async def async_client(app) -> AsyncClient:
 @pytest.fixture
 def create_obj_in_db(async_session: AsyncSession):
     async def _create_obj_in_db(obj: T) -> T:
-        if isinstance(obj, TimestampMixin):
-            # TODO: Без этого костыля не работает, нужно разобраться почему
-            #       сущности создаются с одинаковым created_at в одном тесте
-            now = datetime.utcnow()
-            obj.created_at = now
-            obj.updated_at = now
-        async_session.add(obj)
+        values = vars(obj)
+        values.pop('_sa_instance_state')
+
+        obj_class: Type[T] = obj.__class__
+        cursor: CursorResult = await async_session.execute(
+            insert(obj_class).values(**values).returning(obj_class)
+        )
         await async_session.commit()
-        await async_session.refresh(obj)
-        return obj
+        return obj_class(**cursor.mappings().one())
 
     return _create_obj_in_db
 

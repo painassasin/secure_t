@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - 'main'
   pull_request:
     branches:
       - 'main'
@@ -24,7 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
           architecture: 'x64'
@@ -40,9 +38,12 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
         run: |
-          poetry run sh -c "pytest --cov=backend tests/ -v"
+          poetry run sh -c "pytest --cov=backend tests/ --cov-report xml:coverage.xml"
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
 
 
   build:
