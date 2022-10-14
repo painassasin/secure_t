@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from backend.app import create_app
 from backend.auth.schemas import UserInDB
 from backend.core import settings
+from backend.core.context_vars import SESSION
 from backend.core.security import create_access_token, get_password_hash
 from backend.models import Base, User
 
@@ -122,6 +123,13 @@ def create_obj_in_db(async_session: AsyncSession):
         return obj_class(**cursor.mappings().one())
 
     return _create_obj_in_db
+
+
+@pytest.fixture
+def set_session(async_session):
+    SESSION.set(async_session)
+    yield
+    SESSION.set(None)
 
 
 @pytest.fixture

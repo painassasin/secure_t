@@ -1,6 +1,9 @@
+from unittest.mock import patch
+
 import pytest
 from sqlalchemy import select
 
+from backend.core.security import create_access_token
 from backend.models import User
 
 
@@ -21,10 +24,13 @@ class TestSignIn:
         response = await async_client.post(self.url, data={'username': username, 'password': password})
         assert response.status_code == 401
 
-    async def test_success(self, async_client, create_user):
+    @patch('backend.core.security._create_token', return_value='fake_access_token')
+    async def test_success(self, mock_create_token, async_client, create_user):
         await create_user('test_user', 'test_password')
         response = await async_client.post(self.url, data={'username': 'test_user', 'password': 'test_password'})
         assert response.status_code == 200
+        assert mock_create_token.called
+        assert response.json() == {'access_token': 'fake_access_token', 'token_type': 'bearer'}
 
 
 @pytest.mark.asyncio
@@ -52,6 +58,16 @@ class TestGetUser:
 
     async def test_auth_required(self, async_client):
         response = await async_client.get(self.url)
+        assert response.status_code == 401
+
+    @pytest.mark.parametrize('access_token', ['Bearer token', 'token'])
+    async def test_invalid_token_format(self, async_client, create_user, access_token):
+        response = await async_client.get(self.url, headers={'Authorization': access_token})
+        assert response.status_code == 401
+
+    async def test_user_not_found(self, async_client):
+        token = create_access_token(username='invalid_user')
+        response = await async_client.get(self.url, headers={'Authorization': f'Bearer {token}'})
         assert response.status_code == 401
 
     async def test_success(self, async_client, create_user):

@@ -27,7 +27,7 @@ class UserRepository(BaseRepository):
             await self._db_session.commit()
         except IntegrityError:
             await self._db_session.rollback()
-            self._logger.info('User %s already exists', username)
+            self._logger.info('User %s already exists', username)  # pragma: no cover
             raise UsernameAlreadyExists
         else:
             return UserInDB.parse_obj(cursor.mappings().one())
