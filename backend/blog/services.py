@@ -36,13 +36,13 @@ class BlogService:
         return total, items
 
     async def update_post(self, post_id: int, user_id: int, data: UpdatePost):
-        if not (post := await self.post_repository.get_post_or_comment_in_db(post_id=post_id)):
+        if not (post := await self.post_repository.get_post_or_comment_in_db(post_id=post_id, for_update=True)):
             raise PostNotFound
 
         if post.owner_id != user_id:
             raise Forbidden('Only owner have to update post')
 
-        return await self.post_repository.update_post(post_id=post_id, owner_id=user_id, **data.dict())
+        return await self.post_repository.update_post(post_id=post_id, **data.dict())
 
     async def delete_post(self, post_id: int, user_id: int):
         if not (post := await self.post_repository.get_post_or_comment_in_db(post_id=post_id)):
@@ -51,4 +51,4 @@ class BlogService:
         if post.owner_id != user_id:
             raise Forbidden('Only owner have to delete post')
 
-        await self.post_repository.delete_post(post_id)
+        await self.post_repository.delete_post(post_id=post_id)
