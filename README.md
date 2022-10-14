@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/painassasin/secure_t/branch/main/graph/badge.svg?token=6joi4dOwKS)](https://codecov.io/gh/painassasin/secure_t)
+
 # Блог с древовидными комментариями
 ## Стек
 - python3.10
