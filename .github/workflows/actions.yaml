@@ -38,11 +38,12 @@ jobs:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: postgres
         run: |
-          poetry run sh -c "pytest --cov=backend tests/"
+          poetry run sh -c "pytest --cov=backend tests/ --cov-report xml:coverage.xml"
       - name: Upload Coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: /home/runner/coverage.xml
 
 
   build:
