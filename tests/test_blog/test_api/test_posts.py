@@ -1,3 +1,5 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -35,6 +37,15 @@ class TestCreatePost:
 @pytest.mark.asyncio
 class TestGetAllPosts:
     url = '/blog/posts/'
+
+    @pytest.fixture(autouse=True)
+    def mock_async_session_in_repo(self, async_session):
+        with patch('backend.blog.repositories.async_session') as mock:
+            mock.return_value = AsyncMock(
+                __aenter__=AsyncMock(return_value=async_session),
+                __aexit__=AsyncMock(return_value=None)
+            )
+            yield mock
 
     async def test_without_comments_belongs_current_user(self, create_user, create_post, async_client):
         _, user = await create_user('user', 'password')

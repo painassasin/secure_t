@@ -6,6 +6,7 @@ from sqlalchemy.sql import Select
 from sqlalchemy.sql.selectable import CTE
 
 from backend.blog.schemas import PostInDB, PostWithComments, PostWithUser
+from backend.core.database import async_engine, async_session
 from backend.core.repository import BaseRepository
 from backend.models import Post, User
 
@@ -33,7 +34,7 @@ class PostRepository(BaseRepository):
         else:
             return post
 
-    async def get_all_posts(self, limit: int, offset: int) -> list[PostWithUser]:
+    async def get_all_posts(self, limit: int, offset: int) -> tuple[int, list[PostWithUser]]:
         """
         WITH RECURSIVE t AS (
             SELECT p1.id, p1."text", p1.owner_id, p1.created_at, p1.id AS child_id, 0 cntr
@@ -72,7 +73,7 @@ class PostRepository(BaseRepository):
             )
         )
 
-        stmt: Select = select(
+        stmt_1: Select = select(
             t_cte.c.id,
             t_cte.c.text,
             t_cte.c.created_at,
@@ -87,18 +88,15 @@ class PostRepository(BaseRepository):
             desc(t_cte.c.created_at)
         ).limit(limit).offset(offset)
 
-        return [
-            PostWithUser(**row)
-            for row in (await self._db_session.execute(stmt)).mappings().all()
-        ]
+        stmt_2 = select(func.count()).filter(Post.parent_id.is_(None))
 
-    async def get_posts_count(self) -> int:
-        """
-        SELECT COUNT(*) FROM posts p WHERE p.parent_id IS NULL
-        """
-        return await self._db_session.scalar(
-            select(func.count()).filter(Post.parent_id.is_(None))
-        )
+        async_session.configure(bind=async_engine.execution_options(isolation_level='REPEATABLE READ'))
+        async with async_session() as session:
+            data = (await session.execute(stmt_1)).mappings().all()
+            total = await self._db_session.scalar(stmt_2)
+
+        async_session.configure(async_engine.execution_options(isolation_level='READ COMMITTED'))
+        return total, [PostWithUser(**row) for row in data]
 
     async def update_post(self, post_id: int, **values) -> PostInDB:
         """

@@ -28,8 +28,7 @@ class BlogService:
             return Comment.parse_obj(new_comment)
 
     async def get_all_posts(self, limit: int, offset: int) -> tuple[int, list[PostWithUser]]:
-        total = await self.post_repository.get_posts_count()
-        items = await self.post_repository.get_all_posts(
+        total, items = await self.post_repository.get_all_posts(
             limit=limit,
             offset=offset,
         )
