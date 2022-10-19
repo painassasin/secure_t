@@ -26,7 +26,6 @@ class PostRepository(BaseRepository):
             post = PostInDB.parse_obj((await self._db_session.execute(
                 insert(Post).values(owner_id=owner_id, text=text, parent_id=parent_id).returning(Post)
             )).mappings().one())
-            await self._db_session.commit()
         except IntegrityError as e:
             await self._db_session.rollback()
             self._logger.info(e)
@@ -97,9 +96,9 @@ class PostRepository(BaseRepository):
         """
         SELECT COUNT(*) FROM posts p WHERE p.parent_id IS NULL
         """
-        return (await self._db_session.execute(
+        return await self._db_session.scalar(
             select(func.count()).filter(Post.parent_id.is_(None))
-        )).scalar()
+        )
 
     async def update_post(self, post_id: int, **values) -> PostInDB:
         """
@@ -110,7 +109,6 @@ class PostRepository(BaseRepository):
         cursor = await self._db_session.execute(
             update(Post).values(**values).filter(Post.id == post_id).returning(Post)
         )
-        await self._db_session.commit()
         return PostInDB.parse_obj(cursor.mappings().one())
 
     async def get_post_or_comment_in_db(self, post_id, for_update: bool = False) -> PostInDB | None:
@@ -129,7 +127,6 @@ class PostRepository(BaseRepository):
         DELETE FROM posts p WHERE p.id == :post_id
         """
         await self._db_session.execute(delete(Post).filter(Post.id == post_id))
-        await self._db_session.commit()
 
     async def get_single_post(self, post_id: int) -> PostWithComments | None:
         """
