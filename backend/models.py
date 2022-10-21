@@ -23,6 +23,6 @@ class Post(TimestampMixin, Base):
     )
 
     id = sa.Column(sa.Integer, primary_key=True)
-    owner_id = sa.Column(sa.Integer, sa.ForeignKey('users.id', ondelete='RESTRICT'), nullable=False)
+    owner_id = sa.Column(sa.Integer, sa.ForeignKey('users.id', ondelete='RESTRICT'), nullable=False, index=True)
     text = sa.Column(sa.Text, nullable=False)
-    parent_id = sa.Column(sa.Integer, sa.ForeignKey('posts.id', ondelete='CASCADE'), nullable=True)
+    parent_id = sa.Column(sa.Integer, sa.ForeignKey('posts.id', ondelete='CASCADE'), nullable=True, index=True)

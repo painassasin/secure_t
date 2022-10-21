@@ -95,7 +95,7 @@ class PostRepository(BaseRepository):
             data = (await session.execute(stmt_1)).mappings().all()
             total = await self._db_session.scalar(stmt_2)
 
-        async_session.configure(async_engine.execution_options(isolation_level='READ COMMITTED'))
+        async_session.configure(bind=async_engine.execution_options(isolation_level='READ COMMITTED'))
         return total, [PostWithUser(**row) for row in data]
 
     async def update_post(self, post_id: int, **values) -> PostInDB:
