@@ -49,9 +49,6 @@ uvicorn backend.app:app --reload
 docker-compose build
 docker-compose up -d db api
 ```
-В компоузе оставил запуск через uvicorn, так как сам компоуз написан для разработки больше,
-для прода можно поставить gunicorn, закрыть порты у базы, убрать volume ну и сборку.
-
 
 ### Тесты
 ```shell

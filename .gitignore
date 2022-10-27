@@ -1,4 +1,4 @@
 .idea
-.env
+/.env
 .pytest_cache
 .coverage

@@ -1,27 +1,26 @@
+FROM python:3.10-slim as requirements-stage
+
+WORKDIR /tmp
+
+RUN pip install poetry==1.1.13
+
+COPY poetry.lock pyproject.toml /tmp/
+
+RUN poetry export -f requirements.txt --output requirements.txt
+
+
 FROM python:3.10-slim
-MAINTAINER painassasin@icloud.com
 
 WORKDIR /opt/
 
-ENV PIP_DISABLE_PIP_VERSION_CHECK=on \
-    PIP_NO_CACHE_DIR=off \
-    PYTHON_PATH=/opt/todolist \
-    POETRY_VERSION=1.1.13
+COPY --from=requirements-stage /tmp/requirements.txt /opt/requirements.txt
 
-RUN groupadd --system service && useradd --system -g service api
-
-RUN pip install "poetry==$POETRY_VERSION"
-
-COPY poetry.lock pyproject.toml ./
-RUN  poetry config virtualenvs.create false \
-     && poetry install --no-root --no-dev --no-ansi --no-interaction
+RUN pip install --no-cache-dir -r /opt/requirements.txt
 
 COPY . .
-
-USER api
 
 EXPOSE 8000
 
 ENTRYPOINT ["bash", "entrypoint.sh"]
 
-CMD ["uvicorn", "backend.app:create_app", "--factory","--reload", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
