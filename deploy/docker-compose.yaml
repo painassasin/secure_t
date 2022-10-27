@@ -16,14 +16,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 3
-    ports:
-      - "5432:5432"
 
   api:
     image: painassasin/secure_t:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
     restart: always
     env_file:
       - ./.env
@@ -33,7 +28,7 @@ services:
       db:
         condition: service_healthy
     ports:
-      - "8000:8000"
+      - "9000:8000"
     healthcheck:
       test: python3 -c 'import http.client;http.client.HTTPConnection("127.0.0.1:8000", timeout=1).request("GET", "/ping/")'
       interval: 3s
