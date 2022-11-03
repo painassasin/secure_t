@@ -3,7 +3,7 @@
 # Блог с древовидными комментариями
 ## Стек
 - fastapi
-- postgres
+- postgres (async)
 - alembic
 
 ## Описание
