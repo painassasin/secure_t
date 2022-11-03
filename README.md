@@ -2,7 +2,6 @@
 
 # Блог с древовидными комментариями
 ## Стек
-- python3.10
 - fastapi
 - postgres
 - alembic
