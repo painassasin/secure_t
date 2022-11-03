@@ -94,6 +94,7 @@ async def make_migrations(test_engine):
 
 @pytest.fixture(autouse=True)
 def mock_session_middleware(async_session):
+    # Мокаем создание сессии
     with patch('backend.core.middleware.async_session') as mock:
         mock.return_value = AsyncMock(
             __aenter__=AsyncMock(return_value=async_session),
